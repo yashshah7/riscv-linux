@@ -177,6 +177,8 @@ endmenu
 
 menu "Bus support"
 
+source "arch/riscv/drivers/Kconfig"
+
 config PCI
 	bool "PCI support"
 	select PCI_MSI
