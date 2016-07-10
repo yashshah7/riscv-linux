@@ -7,8 +7,9 @@
 #include <linux/interrupt.h>
 
 #include <asm/sbi.h>
+#include <asm/atomic.h>
 
-static DEFINE_SPINLOCK(sbi_tty_port_lock);
+static atomic_t tty_ready = ATOMIC_INIT(0);
 static struct tty_port sbi_tty_port;
 static struct tty_driver *sbi_tty_driver;
 
@@ -18,10 +19,11 @@ irqreturn_t sbi_console_isr(void)
 	if (ch < 0)
 		return IRQ_NONE;
 
-	spin_lock(&sbi_tty_port_lock);
-	tty_insert_flip_char(&sbi_tty_port, ch, TTY_NORMAL);
-	tty_flip_buffer_push(&sbi_tty_port);
-	spin_unlock(&sbi_tty_port_lock);
+	/* Do not deliver characters until tty subsystem has been started */
+	if (atomic_read(&tty_ready)) {
+		tty_insert_flip_char(&sbi_tty_port, ch, TTY_NORMAL);
+		tty_flip_buffer_push(&sbi_tty_port);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -109,6 +111,9 @@ static int __init sbi_console_init(void)
 	ret = tty_register_driver(sbi_tty_driver);
 	if (unlikely(ret))
 		goto out_tty_put;
+
+	/* Enable the console ISR */
+	atomic_set(&tty_ready, 1);
 
 	/* Poll the console once, which will trigger future interrupts */
 	sbi_console_isr();
