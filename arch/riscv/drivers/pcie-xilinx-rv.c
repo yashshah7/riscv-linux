@@ -425,33 +425,10 @@ static irqreturn_t xilinx_pcie_intr_handler(int irq, void *data)
 		xilinx_pcie_clear_err_interrupts(port);
 	}
 
-	if (status & XILINX_PCIE_INTR_INTX) {
-		/* INTx interrupt received */
+	if ((status & XILINX_PCIE_INTR_INTX) || (status & XILINX_PCIE_INTR_MSI)) {
 		val = pcie_read(port, XILINX_PCIE_REG_RPIFR1);
 
 		/* Check whether interrupt valid */
-		if (!(val & XILINX_PCIE_RPIFR1_INTR_VALID)) {
-			dev_warn(port->dev, "RP Intr FIFO1 read error\n");
-			return IRQ_HANDLED;
-		}
-
-		if (!(val & XILINX_PCIE_RPIFR1_MSI_INTR)) {
-			/* Clear interrupt FIFO register 1 */
-			pcie_write(port, XILINX_PCIE_RPIFR1_ALL_MASK,
-				   XILINX_PCIE_REG_RPIFR1);
-
-			/* Handle INTx Interrupt */
-			val = ((val & XILINX_PCIE_RPIFR1_INTR_MASK) >>
-				XILINX_PCIE_RPIFR1_INTR_SHIFT) + 1;
-			generic_handle_irq(irq_find_mapping(port->irq_domain,
-							    val));
-		}
-	}
-
-	if (status & XILINX_PCIE_INTR_MSI) {
-		/* MSI Interrupt */
-		val = pcie_read(port, XILINX_PCIE_REG_RPIFR1);
-
 		if (!(val & XILINX_PCIE_RPIFR1_INTR_VALID)) {
 			dev_warn(port->dev, "RP Intr FIFO1 read error\n");
 			return IRQ_HANDLED;
@@ -469,6 +446,15 @@ static irqreturn_t xilinx_pcie_intr_handler(int irq, void *data)
 				/* Handle MSI Interrupt */
 				generic_handle_irq(msi_data);
 			}
+		} else {
+			/* Clear interrupt FIFO register 1 */
+			pcie_write(port, XILINX_PCIE_RPIFR1_ALL_MASK,
+				   XILINX_PCIE_REG_RPIFR1);
+
+			/* Handle INTx Interrupt */
+			val = ((val & XILINX_PCIE_RPIFR1_INTR_MASK) >>
+				XILINX_PCIE_RPIFR1_INTR_SHIFT) + 1;
+			generic_handle_irq(irq_find_mapping(port->irq_domain, val));
 		}
 	}
 
@@ -546,7 +532,7 @@ static int xilinx_pcie_init_irq_domain(struct xilinx_pcie_port *port)
 	struct device *dev = port->dev;
 
 	/* Setup INTx */
-	port->irq_domain = irq_domain_add_linear(NULL, XILINX_NUM_INTX_IRQS,
+	port->irq_domain = irq_domain_add_linear(NULL, XILINX_NUM_INTX_IRQS + 1,
 						 &intx_domain_ops,
 						 port);
 	if (!port->irq_domain) {
@@ -598,6 +584,19 @@ static void xilinx_pcie_init_port(struct xilinx_pcie_port *port)
 	pcie_write(port, pcie_read(port, XILINX_PCIE_REG_RPSC) |
 			 XILINX_PCIE_REG_RPSC_BEN,
 		   XILINX_PCIE_REG_RPSC);
+}
+
+static int xilinx_pcie_intx_map_irq(const struct pci_dev *pdev, u8 slot, u8 pin)
+{
+	struct xilinx_pcie_port *port = pdev->bus->sysdata;
+	unsigned int irq;
+
+	irq = irq_create_mapping(port->irq_domain, pin);
+	printk("PCI: %s mapping slot %d pin %d => irq %d\n", pci_name(pdev), slot, pin, irq);
+	if (!irq)
+		return -EINVAL;
+
+	return irq;
 }
 
 /**
@@ -674,9 +673,7 @@ static int xilinx_pcie_probe(struct platform_device *pdev)
 #endif
 	pci_scan_child_bus(bus);
 	pci_assign_unassigned_bus_resources(bus);
-#ifndef CONFIG_MICROBLAZE
-	// pci_fixup_irqs(pci_common_swizzle, of_irq_parse_and_map_pci);
-#endif
+	pci_fixup_irqs(pci_common_swizzle, &xilinx_pcie_intx_map_irq);
 	pci_bus_add_devices(bus);
 	platform_set_drvdata(pdev, port);
 
