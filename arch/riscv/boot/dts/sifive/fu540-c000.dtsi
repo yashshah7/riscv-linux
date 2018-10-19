@@ -166,6 +166,16 @@
 			reg = <0x0 0x10011000 0x0 0x1000>;
 			clocks = <&prci PRCI_CLK_TLCLK>;
 		};
+		L5: clint@2000000 {
+			compatible = "riscv,clint0";
+			interrupts-extended = <
+			&cpu0_intc 3 &cpu0_intc 7
+			&cpu1_intc 3 &cpu1_intc 7
+			&cpu2_intc 3 &cpu2_intc 7
+			&cpu3_intc 3 &cpu3_intc 7
+			&cpu4_intc 3 &cpu4_intc 7>;
+			reg = <0x0 0x2000000 0x0 0x10000>;
+                };
 		plic0: interrupt-controller@c000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
@@ -177,6 +187,7 @@
 				&cpu3_intc 11 &cpu3_intc 9
 				&cpu4_intc 11 &cpu4_intc 9>;
 			reg = <0x0 0xc000000 0x0 0x4000000>;
+                        riscv,ndev = <53>;
 		};
 	};
 };
