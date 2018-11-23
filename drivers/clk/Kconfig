@@ -284,6 +284,7 @@ config COMMON_CLK_STM32H7
 	  Support for stm32h7 SoC family clocks
 
 source "drivers/clk/actions/Kconfig"
+source "drivers/clk/analogbits/Kconfig"
 source "drivers/clk/bcm/Kconfig"
 source "drivers/clk/hisilicon/Kconfig"
 source "drivers/clk/imgtec/Kconfig"
@@ -295,6 +296,7 @@ source "drivers/clk/mvebu/Kconfig"
 source "drivers/clk/qcom/Kconfig"
 source "drivers/clk/renesas/Kconfig"
 source "drivers/clk/samsung/Kconfig"
+source "drivers/clk/sifive/Kconfig"
 source "drivers/clk/sprd/Kconfig"
 source "drivers/clk/sunxi-ng/Kconfig"
 source "drivers/clk/tegra/Kconfig"
