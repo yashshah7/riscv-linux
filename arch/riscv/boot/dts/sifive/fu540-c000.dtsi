@@ -5,7 +5,8 @@
 
 /dts-v1/;
 
-#include <linux/clk/sifive-fu540-prci.h>
+/*#include <linux/clk/sifive-fu540-prci.h>*/
+#define PRCI_CLK_TLCLK 3
 
 / {
 	#address-cells = <2>;
@@ -18,6 +19,16 @@
 	};
 
 	chosen {
+	};
+
+	reserved-memory {
+                #address-cells = <2>;
+                #size-cells = <2>;
+                ranges;
+
+		l2_lim: lim@0x8000000 {
+			reg = <0x0 0x8000000 0x0 0x2000000>;
+		};
 	};
 
 	cpus {
@@ -188,6 +199,18 @@
 				&cpu4_intc 11 &cpu4_intc 9>;
 			reg = <0x0 0xc000000 0x0 0x4000000>;
                         riscv,ndev = <53>;
+		};
+		cache-controller@2010000 {
+			compatible = "sifive,fu540-c000-ccache", "cache";
+			cache-block-size = <64>;
+			cache-level = <2>;
+			cache-sets = <1024>;
+			cache-size = <2097152>;
+			cache-unified;
+			interrupt-parent = <&plic0>;
+			interrupts = <1 2 3>;
+			reg = <0x0 0x2010000 0x0 0x1000>;
+			memory-region = <&l2_lim>;
 		};
 	};
 };
