@@ -5,7 +5,8 @@
 
 /dts-v1/;
 
-#include <linux/clk/sifive-fu540-prci.h>
+/*#include <linux/clk/sifive-fu540-prci.h>*/
+#define PRCI_CLK_TLCLK 3
 
 / {
 	#address-cells = <2>;
@@ -188,6 +189,51 @@
 				&cpu4_intc 11 &cpu4_intc 9>;
 			reg = <0x0 0xc000000 0x0 0x4000000>;
                         riscv,ndev = <53>;
+		};
+		L45: pwm@10020000 {
+                        compatible = "sifive,pwm0";
+                        interrupt-parent = <&plic0>;
+                        interrupts = <42 43 44 45>;
+                        reg = <0x0 0x10020000 0x0 0x1000>;
+                        reg-names = "control";
+                        clocks = <&prci 3>;
+                        #pwm-cells = <3>;
+                };
+                L46: pwm@10021000 {
+                        compatible = "sifive,pwm0";
+                        interrupt-parent = <&plic0>;
+                        interrupts = <46 47 48 49>;
+                        reg = <0x0 0x10021000 0x0 0x1000>;
+                        reg-names = "control";
+                        clocks = <&prci 3>;
+                        #pwm-cells = <3>;
+                };
+		pwmleds {
+                        compatible = "pwm-leds";
+                        heartbeat {
+                                pwms = <&L45 0 100000 0>;
+                                max-brightness = <255>;
+                                linux,default-trigger = "heartbeat";
+				active-low;
+                        };
+                        mtd {
+                                pwms = <&L45 1 100000 0>;
+                                max-brightness = <255>;
+                                linux,default-trigger = "mtd";
+				active-low;
+                        };
+                        netdev {
+                                pwms = <&L45 2 100000 0>;
+                                max-brightness = <255>;
+                                linux,default-trigger = "netdev";
+				active-low;
+                        };
+                        panic {
+                                pwms = <&L45 3 100000 0>;
+                                max-brightness = <255>;
+                                linux,default-trigger = "panic";
+				active-low;
+                        };
 		};
 	};
 };
