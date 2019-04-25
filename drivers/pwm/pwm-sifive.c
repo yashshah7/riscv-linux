@@ -34,7 +34,7 @@
 #define PWM_SIFIVE_PWMCFG_EN_ONCE	BIT(13)
 #define PWM_SIFIVE_PWMCFG_CENTER	BIT(16)
 #define PWM_SIFIVE_PWMCFG_GANG		BIT(24)
-#define PWM_SIFIVE_PWMCFG_IP		BIT(28)
+#define PWM_SIFIVE_PWMCFG_IP		28
 
 /* PWM_SIFIVE_SIZE_PWMCMP is used to calculate offset for pwmcmpX registers */
 #define PWM_SIFIVE_SIZE_PWMCMP		4
@@ -146,6 +146,18 @@ static int pwm_sifive_enable(struct pwm_chip *chip, bool enable)
 	return 0;
 }
 
+void pwm_sifive_deglitch(struct pwm_sifive_ddata *ddata, int enable)
+{
+	u16 val;
+
+	val = readl(ddata->regs + PWM_SIFIVE_PWMCFG);
+	if (enable)
+		val |= PWM_SIFIVE_PWMCFG_DEGLITCH;
+	else
+		val &= ~PWM_SIFIVE_PWMCFG_DEGLITCH;
+	writel(val, ddata->regs + PWM_SIFIVE_PWMCFG);
+}
+
 static int pwm_sifive_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 			    struct pwm_state *state)
 {
@@ -155,7 +167,7 @@ static int pwm_sifive_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	unsigned long long num;
 	bool enabled;
 	int ret = 0;
-	u32 frac;
+	u32 val, frac;
 
 	if (state->polarity != PWM_POLARITY_INVERSED)
 		return -EINVAL;
@@ -194,8 +206,20 @@ static int pwm_sifive_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 		pwm_sifive_update_clock(ddata, clk_get_rate(ddata->clk));
 	}
 
+	pwm_sifive_deglitch(ddata, 1);
+
 	writel(frac, ddata->regs + PWM_SIFIVE_PWMCMP0 +
 	       pwm->hwpwm * PWM_SIFIVE_SIZE_PWMCMP);
+	/*
+	 * Wait for the completion of one cycle. Also, If frac == 0, the IP bit
+	 * will always remian high and the while loop will get stuck infinitely
+	 * To prevent this, check frac for zero value.
+	 */
+	do {
+		val = readl(ddata->regs + PWM_SIFIVE_PWMCFG);
+	} while ((val & BIT(PWM_SIFIVE_PWMCFG_IP + pwm->hwpwm)) && frac);
+
+	pwm_sifive_deglitch(ddata, 0);
 
 	if (state->enabled != enabled)
 		pwm_sifive_enable(chip, state->enabled);
