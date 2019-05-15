@@ -48,4 +48,10 @@ config MACB_PCI
 	  To compile this driver as a module, choose M here: the module
 	  will be called macb_pci.
 
+config MACB_SIFIVE_FU540
+	bool "Cadence MACB/GEM support for SiFive FU540 SoC"
+	depends on MACB && GPIO_SIFIVE
+	help
+	  Enable the Cadence MACB/GEM support for SiFive FU540 SoC.
+
 endif # NET_VENDOR_CADENCE
