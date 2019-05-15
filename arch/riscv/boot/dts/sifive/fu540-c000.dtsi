@@ -5,7 +5,7 @@
 
 /dts-v1/;
 
-#include <linux/clk/sifive-fu540-prci.h>
+#define PRCI_CLK_TLCLK 3
 
 / {
 	#address-cells = <2>;
@@ -189,5 +189,35 @@
 			reg = <0x0 0xc000000 0x0 0x4000000>;
                         riscv,ndev = <53>;
 		};
+		L52: ethernet@10090000 {
+                        compatible = "cdns,fu540-macb";
+                        interrupt-parent = <&plic0>;
+                        interrupts = <53>;
+                        reg = <0x0 0x10090000 0x0 0x2000 0x0 0x100a0000 0x0 0x1000>;
+                        reg-names = "control";
+
+                        local-mac-address = [00 00 00 00 00 00];
+                        phy-mode = "gmii";
+                        clock-names = "pclk", "hclk";
+                        clocks = <&prci 1>, <&prci 1>;
+
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        phy1: ethernet-phy@0 {
+                                reg = <0>;
+                                reset-gpios = <&L31 12 1>;
+                        };
+                };
+                L31: gpio@10060000 {
+                        compatible = "sifive,gpio0";
+                        interrupt-parent = <&plic0>;
+                        interrupts = <7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22>;
+                        reg = <0x0 0x10060000 0x0 0x1000>;
+                        reg-names = "control";
+                        gpio-controller;
+                        #gpio-cells = <2>;
+                        interrupt-controller;
+                        #interrupt-cells = <2>;
+                };
 	};
 };
