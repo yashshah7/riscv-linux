@@ -40,6 +40,33 @@
 		clock-frequency = <RTCCLK_FREQ>;
 		clock-output-names = "rtcclk";
 	};
+	pwmleds {
+		compatible = "pwm-leds";
+		heartbeat {
+			pwms = <&pwm0 0 100000 0>;
+			max-brightness = <255>;
+			linux,default-trigger = "heartbeat";
+			active-low;
+		};
+		mtd {
+			pwms = <&pwm0 1 100000 0>;
+			max-brightness = <255>;
+			linux,default-trigger = "mtd";
+			active-low;
+		};
+		netdev {
+			pwms = <&pwm0 2 100000 0>;
+			max-brightness = <255>;
+			linux,default-trigger = "netdev";
+			active-low;
+		};
+		panic {
+			pwms = <&pwm0 3 100000 0>;
+			max-brightness = <255>;
+			linux,default-trigger = "panic";
+			active-low;
+		};
+	};
 };
 
 &uart0 {
