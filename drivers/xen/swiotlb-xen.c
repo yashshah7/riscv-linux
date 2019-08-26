@@ -1,17 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  Copyright 2010
  *  by Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
  *
  * This code provides a IOMMU for Xen PV guests with PCI passthrough.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License v2.0 as published by
- * the Free Software Foundation
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  *
  * PV guests under Xen are running in an non-contiguous memory architecture.
  *
@@ -30,7 +22,6 @@
  * and PFN+1==MFN+1. Lastly with Xen 4.0, pages (in debug mode) are
  * allocated in descending order (high to low), meaning the guest might
  * never get any MFN's under the 4GB mark.
- *
  */
 
 #define pr_fmt(fmt) "xen:" KBUILD_MODNAME ": " fmt
@@ -92,34 +83,18 @@ static inline dma_addr_t xen_virt_to_bus(void *address)
 	return xen_phys_to_bus(virt_to_phys(address));
 }
 
-static int check_pages_physically_contiguous(unsigned long xen_pfn,
-					     unsigned int offset,
-					     size_t length)
-{
-	unsigned long next_bfn;
-	int i;
-	int nr_pages;
-
-	next_bfn = pfn_to_bfn(xen_pfn);
-	nr_pages = (offset + length + XEN_PAGE_SIZE-1) >> XEN_PAGE_SHIFT;
-
-	for (i = 1; i < nr_pages; i++) {
-		if (pfn_to_bfn(++xen_pfn) != ++next_bfn)
-			return 0;
-	}
-	return 1;
-}
-
 static inline int range_straddles_page_boundary(phys_addr_t p, size_t size)
 {
-	unsigned long xen_pfn = XEN_PFN_DOWN(p);
-	unsigned int offset = p & ~XEN_PAGE_MASK;
+	unsigned long next_bfn, xen_pfn = XEN_PFN_DOWN(p);
+	unsigned int i, nr_pages = XEN_PFN_UP(xen_offset_in_page(p) + size);
 
-	if (offset + size <= XEN_PAGE_SIZE)
-		return 0;
-	if (check_pages_physically_contiguous(xen_pfn, offset, size))
-		return 0;
-	return 1;
+	next_bfn = pfn_to_bfn(xen_pfn);
+
+	for (i = 1; i < nr_pages; i++)
+		if (pfn_to_bfn(++xen_pfn) != ++next_bfn)
+			return 1;
+
+	return 0;
 }
 
 static int is_xen_swiotlb_buffer(dma_addr_t dma_addr)
@@ -211,6 +186,15 @@ int __ref xen_swiotlb_init(int verbose, bool early)
 retry:
 	bytes = xen_set_nslabs(xen_io_tlb_nslabs);
 	order = get_order(xen_io_tlb_nslabs << IO_TLB_SHIFT);
+
+	/*
+	 * IO TLB memory already allocated. Just use it.
+	 */
+	if (io_tlb_start != 0) {
+		xen_io_tlb_start = phys_to_virt(io_tlb_start);
+		goto end;
+	}
+
 	/*
 	 * Get IO TLB memory from any location.
 	 */
@@ -240,7 +224,6 @@ retry:
 		m_ret = XEN_SWIOTLB_ENOMEM;
 		goto error;
 	}
-	xen_io_tlb_end = xen_io_tlb_start + bytes;
 	/*
 	 * And replace that memory with pages under 4GB.
 	 */
@@ -267,6 +250,8 @@ retry:
 	} else
 		rc = swiotlb_late_init_with_tbl(xen_io_tlb_start, xen_io_tlb_nslabs);
 
+end:
+	xen_io_tlb_end = xen_io_tlb_start + bytes;
 	if (!rc)
 		swiotlb_set_max_segment(PAGE_SIZE);
 
@@ -337,6 +322,7 @@ xen_swiotlb_alloc_coherent(struct device *hwdev, size_t size,
 			xen_free_coherent_pages(hwdev, size, ret, (dma_addr_t)phys, attrs);
 			return NULL;
 		}
+		SetPageXenRemapped(virt_to_page(ret));
 	}
 	memset(ret, 0, size);
 	return ret;
@@ -360,8 +346,9 @@ xen_swiotlb_free_coherent(struct device *hwdev, size_t size, void *vaddr,
 	/* Convert the size to actually allocated. */
 	size = 1UL << (order + XEN_PAGE_SHIFT);
 
-	if (((dev_addr + size - 1 <= dma_mask)) ||
-	    range_straddles_page_boundary(phys, size))
+	if (!WARN_ON((dev_addr + size - 1 > dma_mask) ||
+		     range_straddles_page_boundary(phys, size)) &&
+	    TestClearPageXenRemapped(virt_to_page(vaddr)))
 		xen_destroy_contiguous_region(phys, order);
 
 	xen_free_coherent_pages(hwdev, size, vaddr, (dma_addr_t)phys, attrs);
@@ -401,7 +388,7 @@ static dma_addr_t xen_swiotlb_map_page(struct device *dev, struct page *page,
 
 	map = swiotlb_tbl_map_single(dev, start_dma_addr, phys, size, dir,
 				     attrs);
-	if (map == DMA_MAPPING_ERROR)
+	if (map == (phys_addr_t)DMA_MAPPING_ERROR)
 		return DMA_MAPPING_ERROR;
 
 	dev_addr = xen_phys_to_bus(map);

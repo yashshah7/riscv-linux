@@ -1,9 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2015 Cavium, Inc.
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of version 2 of the GNU General Public License
- * as published by the Free Software Foundation.
  */
 
 #include <linux/acpi.h>
@@ -1384,24 +1381,18 @@ static int acpi_get_mac_address(struct device *dev, struct acpi_device *adev,
 				u8 *dst)
 {
 	u8 mac[ETH_ALEN];
-	int ret;
+	u8 *addr;
 
-	ret = fwnode_property_read_u8_array(acpi_fwnode_handle(adev),
-					    "mac-address", mac, ETH_ALEN);
-	if (ret)
-		goto out;
-
-	if (!is_valid_ether_addr(mac)) {
+	addr = fwnode_get_mac_address(acpi_fwnode_handle(adev), mac, ETH_ALEN);
+	if (!addr) {
 		dev_err(dev, "MAC address invalid: %pM\n", mac);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	dev_info(dev, "MAC address set to: %pM\n", mac);
 
-	memcpy(dst, mac, ETH_ALEN);
-out:
-	return ret;
+	ether_addr_copy(dst, mac);
+	return 0;
 }
 
 /* Currently only sets the MAC address. */

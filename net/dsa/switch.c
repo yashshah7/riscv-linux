@@ -1,13 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Handling of a single switch chip, part of a switch fabric
  *
  * Copyright (c) 2017 Savoir-faire Linux Inc.
  *	Vivien Didelot <vivien.didelot@savoirfairelinux.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
  */
 
 #include <linux/if_bridge.h>
@@ -156,6 +152,9 @@ static void dsa_switch_mdb_add_bitmap(struct dsa_switch *ds,
 				      const unsigned long *bitmap)
 {
 	int port;
+
+	if (!ds->ops->port_mdb_add)
+		return;
 
 	for_each_set_bit(port, bitmap, ds->num_ports)
 		ds->ops->port_mdb_add(ds, port, mdb);
