@@ -12,5 +12,7 @@ obj-y += ioremap.o
 obj-y += cacheflush.o
 obj-y += context.o
 obj-y += sifive_l2_cache.o
+obj-$(CONFIG_RISCV_PTDUMP_CORE) += dump.o
+obj-$(CONFIG_RISCV_PTDUMP_DEBUGFS) += ptdump_debugfs.o
 
 obj-$(CONFIG_HUGETLB_PAGE) += hugetlbpage.o
