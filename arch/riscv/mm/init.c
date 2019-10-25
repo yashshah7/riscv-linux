@@ -55,6 +55,36 @@ void __init mem_init(void)
 	memblock_free_all();
 
 	mem_init_print_info(NULL);
+#ifdef CONFIG_DEBUG_VM_LAYOUT
+#define MLK(b, t) b, t, (((t) - (b)) >> 10)
+#define MLM(b, t) b, t, (((t) - (b)) >> 20)
+#define MLK_ROUNDUP(b, t) b, t, DIV_ROUND_UP(((t) - (b)), SZ_1K)
+
+
+	pr_notice("Virtual kernel memory layout:\n"
+			"    fixmap  : 0x%08lx - 0x%08lx   (%4ld kB)\n"
+			"    vmemmap : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+			"    vmalloc : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+			"    lowmem  : 0x%08lx - 0x%08lx   (%4ld MB)\n"
+			"      .init : 0x%px - 0x%px   (%4td kB)\n"
+			"      .text : 0x%px - 0x%px   (%4td kB)\n"
+			"      .data : 0x%px - 0x%px   (%4td kB)\n"
+			"       .bss : 0x%px - 0x%px   (%4td kB)\n",
+
+			MLK(FIXADDR_START, FIXADDR_TOP),
+			MLM(VMEMMAP_START, VMEMMAP_END),
+			MLM(VMALLOC_START, VMALLOC_END),
+			MLM(PAGE_OFFSET, (unsigned long)high_memory),
+
+			MLK_ROUNDUP(__init_begin, __init_end),
+			MLK_ROUNDUP(_text, _etext),
+			MLK_ROUNDUP(_sdata, _edata),
+			MLK_ROUNDUP(__bss_start, __bss_stop));
+
+#undef MLK
+#undef MLM
+#undef MLK_ROUNDUP
+#endif
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
