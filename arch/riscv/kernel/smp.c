@@ -21,13 +21,6 @@
 #include <asm/tlbflush.h>
 #include <asm/cacheflush.h>
 
-enum ipi_message_type {
-	IPI_RESCHEDULE,
-	IPI_CALL_FUNC,
-	IPI_CPU_STOP,
-	IPI_MAX
-};
-
 unsigned long __cpuid_to_hartid_map[NR_CPUS] = {
 	[0 ... NR_CPUS-1] = INVALID_HARTID
 };
@@ -82,7 +75,7 @@ static void ipi_stop(void)
 		wait_for_interrupt();
 }
 
-static void send_ipi_mask(const struct cpumask *mask, enum ipi_message_type op)
+void send_ipi_mask(const struct cpumask *mask, enum ipi_message_type op)
 {
 	struct cpumask hartid_mask;
 	int cpu;
@@ -164,6 +157,7 @@ static const char * const ipi_names[] = {
 	[IPI_RESCHEDULE]	= "Rescheduling interrupts",
 	[IPI_CALL_FUNC]		= "Function call interrupts",
 	[IPI_CPU_STOP]		= "CPU stop interrupts",
+	[IPI_CALL_WAKEUP]	= "CPU WAKEUP",
 };
 
 void show_ipi_stats(struct seq_file *p, int prec)

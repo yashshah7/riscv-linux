@@ -15,7 +15,30 @@
 struct seq_file;
 extern unsigned long boot_cpu_hartid;
 
+#if defined CONFIG_SMP && defined CONFIG_HOTPLUG_CPU
+void arch_send_call_wakeup_ipi(int cpu);
+bool can_hotplug_cpu(void);
+#else
+static inline bool can_hotplug_cpu(void)
+{
+	return 0;
+}
+static inline void arch_send_call_wakeup_ipi(int cpu) { }
+#endif
+
 #ifdef CONFIG_SMP
+enum ipi_message_type {
+	IPI_RESCHEDULE,
+	IPI_CALL_FUNC,
+	IPI_CPU_STOP,
+	IPI_CALL_WAKEUP,
+	IPI_MAX
+};
+
+void send_ipi_mask(const struct cpumask *to_whom,
+		      enum ipi_message_type operation);
+
+
 /*
  * Mapping between linux logical cpu index and hartid.
  */
@@ -42,6 +65,13 @@ void riscv_cpuid_to_hartid_mask(const struct cpumask *in, struct cpumask *out);
  * THREAD_INFO_IN_TASK, but we define that unconditionally.
  */
 #define raw_smp_processor_id() (current_thread_info()->cpu)
+
+#ifdef CONFIG_HOTPLUG_CPU
+int __cpu_disable(void);
+void __cpu_die(unsigned int cpu);
+void cpu_play_dead(void);
+void boot_sec_cpu(void);
+#endif /* CONFIG_HOTPLUG_CPU */
 
 #else
 

@@ -14,6 +14,7 @@
 
 void riscv_timer_interrupt(void);
 void riscv_software_interrupt(void);
+void wait_for_software_interrupt(void);
 
 #include <asm-generic/irq.h>
 

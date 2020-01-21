@@ -114,7 +114,8 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 	WRITE_ONCE(__cpu_up_stack_pointer[hartid],
 		  task_stack_page(tidle) + THREAD_SIZE);
 	WRITE_ONCE(__cpu_up_task_pointer[hartid], tidle);
-
+	
+	arch_send_call_wakeup_ipi(cpu);
 	lockdep_assert_held(&cpu_running);
 	wait_for_completion_timeout(&cpu_running,
 					    msecs_to_jiffies(1000));
@@ -124,6 +125,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *tidle)
 		ret = -EIO;
 	}
 
+	pr_notice("CPU%u: online\n", cpu);
 	return ret;
 }
 
@@ -134,7 +136,7 @@ void __init smp_cpus_done(unsigned int max_cpus)
 /*
  * C entry point for a secondary processor.
  */
-asmlinkage __visible void __init smp_callin(void)
+asmlinkage __visible void smp_callin(void)
 {
 	struct mm_struct *mm = &init_mm;
 
@@ -148,7 +150,7 @@ asmlinkage __visible void __init smp_callin(void)
 	trap_init();
 	notify_cpu_starting(smp_processor_id());
 	update_siblings_masks(smp_processor_id());
-	set_cpu_online(smp_processor_id(), 1);
+	set_cpu_online(smp_processor_id(), true);
 	/*
 	 * Remote TLB flushes are ignored while the CPU is offline, so emit
 	 * a local TLB flush right now just in case.
