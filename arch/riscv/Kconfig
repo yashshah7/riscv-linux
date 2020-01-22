@@ -118,6 +118,9 @@ config PAGE_OFFSET
 config ARCH_FLATMEM_ENABLE
 	def_bool y
 
+config ARCH_SUSPEND_POSSIBLE
+	def_bool y
+
 config ARCH_SPARSEMEM_ENABLE
 	def_bool y
 	select SPARSEMEM_VMEMMAP_ENABLE
