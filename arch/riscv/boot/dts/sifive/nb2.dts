@@ -1,0 +1,273 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+	compatible = "sifive,nb2";
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cpu0: cpu@0 {
+			compatible = "sifive,s21", "sifive,bullet0", "riscv";
+			device_type = "cpu";
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <16384>;
+			//next-level-cache = <&ccache>;
+			reg = <0x0>;
+			riscv,isa = "rv64imac";
+			status = "disabled";
+			cpu0_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+		cpu1: cpu@1 {
+			compatible = "sifive,u74", "sifive,bullet0", "riscv";
+			d-cache-block-size = <64>;
+			d-cache-sets = <64>;
+			d-cache-size = <32768>;
+			d-tlb-sets = <1>;
+			d-tlb-size = <40>;
+			device_type = "cpu";
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <32768>;
+			i-tlb-sets = <1>;
+			i-tlb-size = <40>;
+			mmu-type = "riscv,sv39";
+			//next-level-cache = <&ccache>;
+			reg = <0x1>;
+			riscv,isa = "rv64imafdc";
+			tlb-split;
+			cpu1_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+		cpu2: cpu@2 {
+			compatible = "sifive,u74", "sifive,bullet0", "riscv";
+			d-cache-block-size = <64>;
+			d-cache-sets = <64>;
+			d-cache-size = <32768>;
+			d-tlb-sets = <1>;
+			d-tlb-size = <40>;
+			device_type = "cpu";
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <32768>;
+			i-tlb-sets = <1>;
+			i-tlb-size = <40>;
+			mmu-type = "riscv,sv39";
+			//next-level-cache = <&ccache>;
+			reg = <0x2>;
+			riscv,isa = "rv64imafdc";
+			tlb-split;
+			cpu2_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+		cpu3: cpu@3 {
+			compatible = "sifive,u74", "sifive,bullet0", "riscv";
+			d-cache-block-size = <64>;
+			d-cache-sets = <64>;
+			d-cache-size = <32768>;
+			d-tlb-sets = <1>;
+			d-tlb-size = <40>;
+			device_type = "cpu";
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <32768>;
+			i-tlb-sets = <1>;
+			i-tlb-size = <40>;
+			mmu-type = "riscv,sv39";
+			//next-level-cache = <&ccache>;
+			reg = <0x3>;
+			riscv,isa = "rv64imafdc";
+			tlb-split;
+			cpu3_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+		cpu4: cpu@4 {
+			compatible = "sifive,u74", "sifive,bullet0", "riscv";
+			d-cache-block-size = <64>;
+			d-cache-sets = <64>;
+			d-cache-size = <32768>;
+			d-tlb-sets = <1>;
+			d-tlb-size = <40>;
+			device_type = "cpu";
+			i-cache-block-size = <64>;
+			i-cache-sets = <128>;
+			i-cache-size = <32768>;
+			i-tlb-sets = <1>;
+			i-tlb-size = <40>;
+			mmu-type = "riscv,sv39";
+			//next-level-cache = <&ccache>;
+			reg = <0x4>;
+			riscv,isa = "rv64imafdc";
+			tlb-split;
+			cpu4_intc: interrupt-controller {
+				#interrupt-cells = <1>;
+				compatible = "riscv,cpu-intc";
+				interrupt-controller;
+			};
+		};
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		compatible = "sifive,nb2";
+                plic0: interrupt-controller@c000000 {
+                        #interrupt-cells = <1>;
+                        compatible = "sifive,plic-1.0.0";
+                        reg = <0x0 0xc000000 0x0 0x4000000>;
+                        //riscv,ndev = <53>;
+                        interrupt-controller;
+                        interrupts-extended = < 
+                                &cpu0_intc 0xffffffff
+                                &cpu1_intc 0xffffffff &cpu1_intc 9
+                                &cpu2_intc 0xffffffff &cpu2_intc 9
+                                &cpu3_intc 0xffffffff &cpu3_intc 9
+                                &cpu4_intc 0xffffffff &cpu4_intc 9>;
+                };
+		sram: sram@40200000 {
+			compatible = "mmio-sram";
+			reg = <0x0 0x40200000 0x1F 0xFFFF>;
+		};
+		gpio: gpio@20006000 {
+			compatible = "snps,dw-apb-gpio";
+			reg = <0x0 0x20006000 0x0 0x00FF>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+                i2c1: i2c@20508000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x0 0x20508000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <50>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+                };
+                i2c2: i2c@20509000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x0 0x20509000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <50>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+                };
+                i2c3: i2c@2050A000 {
+			compatible = "snps,designware-i2c";
+			reg = <0x0 0x2050A000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <50>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+		};
+		spi0: spi@20500000 {
+			compatile = "cdns,spi-r1p6";
+			reg = <0x0 0x20500000 0x0 0x00FF>;
+			//clock-names = "ref_clk", "pclk";
+			//clocks = <&clkc 26>, <&clkc 35>;
+			//interrupt-parent = <&intc>;
+			//interrupts = <0 49 4>; 
+			//num-cs = <4>;
+			//is-decoded-cs = <0>;
+		};
+                spi1: spi@20501000 {
+                        compatile = "cdns,spi-r1p6";
+                        reg = <0x0 0x20501000 0x0 0x00FF>;
+                        //clock-names = "ref_clk", "pclk";
+                        //clocks = <&clkc 26>, <&clkc 35>;
+                        //interrupt-parent = <&intc>;
+                        //interrupts = <0 49 4>; 
+                        //num-cs = <4>;
+                        //is-decoded-cs = <0>;
+                };
+                spi2: spi@00502000 {
+                        compatile = "cdns,spi-r1p6";
+                        reg = <0x0 0x20502000 0x0 0x00FF>;
+                        //clock-names = "ref_clk", "pclk";
+                        //clocks = <&clkc 26>, <&clkc 35>;
+                        //interrupt-parent = <&intc>;
+                        //interrupts = <0 49 4>; 
+                        //num-cs = <4>;
+                        //is-decoded-cs = <0>;
+                };
+                spi3: spi@20503000 {
+                        compatile = "cdns,spi-r1p6";
+                        reg = <0x0 0x20503000 0x0 0x00FF>;
+                        //clock-names = "ref_clk", "pclk";
+                        //clocks = <&clkc 26>, <&clkc 35>;
+                        //interrupt-parent = <&intc>;
+                        //interrupts = <0 49 4>; 
+                        //num-cs = <4>;
+                        //is-decoded-cs = <0>;
+                };
+                uart1: serial@20505000 {
+                        compatible = "snps,dw-apb-uart";
+                        reg = <0x0 0x20505000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <4>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+                };
+                uart2: serial@20506000 {
+                        compatible = "snps,dw-apb-uart";
+                        reg = <0x0 0x20506000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <4>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+                };
+                uart3: serial@20507000 {
+                        compatible = "snps,dw-apb-uart";
+                        reg = <0x0 0x20507000 0x0 0x00FF>;
+                        //interrupt-parent = <&plic0>;
+                        //interrupts = <4>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+		};
+	        watchdog0: watchdog@2050E000 {
+		        compatible = "snps,dw-wdt";
+			reg = <0x0 0x2050E000 0x0 0x00FF>;
+			//interrupts = <0 171 4>; 
+		};
+		emmc: sdhci@21009000 {
+			compatible = "cdns,sd4hc";
+			reg = <0x0 0x21009000 0x0 0x0FFF>;
+			//interrupts = <0 78 4>; 
+			//clocks = <&clk 4>; 
+			//bus-width = <8>;
+			//mmc-ddr-1_8v;
+			//mmc-hs200-1_8v;
+			//mmc-hs400-1_8v;
+			//cdns,phy-dll-delay-sdclk = <0>;
+		};
+		rtc: rtc@20007000 {
+			compatible = "snps,dw-apb-rtc";
+			reg = <0x0 0x20007000 0x0 0x007F>;
+			//interrupts = <>;
+			//interrupt-parent = <>;
+		};
+		qspi: qspi@20400000 {
+			compatible = "open-silicon,qspi0";
+			reg = <0x0 0x20400000 0x0 0x0FFF
+			       0x0 0x20000000 0x3F 0xFFFF>;
+			//interrupt-parent = <&plic0>;
+                        //interrupts = <52>;
+                        //clocks = <&prci PRCI_CLK_TLCLK>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+		};
+	};
+};
