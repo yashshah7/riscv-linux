@@ -913,6 +913,15 @@ comment "Platform RTC drivers"
 # <asm/mc146818rtc.h> defining CMOS_READ/CMOS_WRITE, and a
 # global rtc_lock ... it's not yet just another platform_device.
 
+config RTC_DRV_DWAPB
+	tristate "Synopsys Designware APB RTC"
+	help
+	  Say Y here if you want to get support for Synopsys Designware
+	  APB RTC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-dwapb.
+
 config RTC_DRV_CMOS
 	tristate "PC-style 'CMOS'"
 	depends on X86 || ARM || PPC || MIPS || SPARC64
