@@ -291,16 +291,26 @@
 			interrupt-parent = <&plic0>;
 			interrupts = <63>;
 		};
-		qspi: qspi@20400000 {
+		qspi: spi@20400000 {
 			compatible = "open-silicon,qspi0";
-			reg = <0x0 0x20400000 0x0 0x0FFF
-			       0x0 0x20000000 0x3F 0xFFFF>;
-			status = "disable";
-			//interrupt-parent = <&plic0>;
-                        //interrupts = <52>;
-                        //clocks = <&prci PRCI_CLK_TLCLK>;
-                        #address-cells = <1>;
-                        #size-cells = <0>;
+			reg = <0x0 0x20400000 0x0 0x00000FFF>,
+			      <0x0 0x20000000 0x0 0x003FFFFF>;
+			reg-names = "qspi", "qspi_mm";
+			interrupt-parent = <&plic0>;
+			interrupts = <52>;
+			clocks = <&hfclk>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			flash@0 {
+				compatible = "issi,is25wp256", "jedec,spi-nor";
+				reg = <0>;
+				spi-max-frequency = <10000000>;
+				m25p,fast-read;
+				spi-tx-bus-width = <4>;
+				spi-rx-bus-width = <4>;
+			};
 		};
 	};
 
