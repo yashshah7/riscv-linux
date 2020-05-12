@@ -13,69 +13,72 @@
 #include <linux/spi/spi-mem.h>
 #include <linux/iopoll.h>
 
-
 #define OS_QSPI_DRIVER_NAME           "os_qspi"
 
 /* register offsets */
 
-#define OS_QSPI_CMD_REG 			0x00UL
-#define OS_QSPI_ADDR_REG 			0x04UL
-#define OS_QSPI_DUMMY_DLP_REG 			0x08UL
+#define OS_QSPI_CMD_REG				0x00UL
+#define OS_QSPI_ADDR_REG			0x04UL
+#define OS_QSPI_DUMMY_DLP_REG			0x08UL
 #define OS_QSPI_MODE_REG			0x0CUL
 #define OS_QSPI_CMD_CFG				0x10UL
-#define OS_QSPI_TX_DATA 			0x14UL
-#define OS_QSPI_RX_DATA 			0x18UL
-#define OS_QSPI_START_CMD_REG 			0x1CUL
-#define OS_QSPI_CUSTOM_CMD_REG 			0x20UL
-#define OS_QSPI_INTR_STAT_REG	 		0x24UL
-#define OS_QSPI_INT_MASK_CLR 			0x28UL
-#define OS_QSPI_BAUD_RATE_REG 			0x2CUL
+#define OS_QSPI_TX_DATA				0x14UL
+#define OS_QSPI_RX_DATA				0x18UL
+#define OS_QSPI_START_CMD_REG			0x1CUL
+#define OS_QSPI_CUSTOM_CMD_REG			0x20UL
+#define OS_QSPI_INTR_STAT_REG			0x24UL
+#define OS_QSPI_INT_MASK_CLR			0x28UL
+#define OS_QSPI_BAUD_RATE_REG			0x2CUL
 #define OS_QSPI_BURST_CTRL_REG			0x30UL
 #define OS_QSPI_SYS_STATUS_REG			0x34UL
 
 /*
  * QSPI Custom command registers bit Masks
  */
-#define OS_QSPI_OPCODE_PH_EN			(1U << 0)
-#define OS_QSPI_ADDR_PH_EN			(1U << 1)
-#define OS_QSPI_MODE_BITS_PH_EN			(1U << 2)
-#define OS_QSPI_DUMMY_PH_EN			(1U << 3)
-#define OS_QSPI_RX_DATA_PH_EN			(1U << 5)
-#define OS_QSPI_TX_DATA_PH_EN			(1U << 6)
+#define OS_QSPI_OPCODE_PH_EN			BIT(0)
+#define OS_QSPI_ADDR_PH_EN			BIT(1)
+#define OS_QSPI_MODE_BITS_PH_EN			BIT(2)
+#define OS_QSPI_DUMMY_PH_EN			BIT(3)
+#define OS_QSPI_RX_DATA_PH_EN			BIT(5)
+#define OS_QSPI_TX_DATA_PH_EN			BIT(6)
 
 /*
  * QSPI interrupt stat bit Masks
  */
-#define OS_QSPI_INTR_MASK_INTERRUPT		(1U << 0)
-#define OS_QSPI_INTR_MASK_AXI_RX_FIFO_FULL	(1U << 1)
-#define OS_QSPI_INTR_MASK_AXI_TX_FIFO_EMPTY	(1U << 2)
-#define OS_QSPI_INTR_MASK_APB_RX_OK		(1U << 3)
-#define OS_QSPI_INTR_MASK_APB_TX_OK		(1U << 4)
-#define OS_QSPI_INTR_MASK_TX_BURST_OK		(1U << 5)
+#define OS_QSPI_INT_MASK_INTERRUPT		BIT(0)
+#define OS_QSPI_INT_MASK_AXI_RX_FIFO_FULL	BIT(1)
+#define OS_QSPI_INT_MASK_AXI_TX_FIFO_EMPTY	BIT(2)
+#define OS_QSPI_INT_MASK_APB_RX			BIT(3)
+#define OS_QSPI_INT_MASK_APB_TX			BIT(4)
+#define OS_QSPI_INT_MASK_BURST			BIT(5)
 
 /*
  * QSPI Configuration Register bit Masks
  */
 
-#define OS_QSPI_PH_SHIFT_BYPASS 		(1U << 24)
-#define OS_QSPI_RX_DLY_HALFCLK			(1U << 31)
-#define OS_QSPI_RW 				(1U << 17)
-#define OS_QSPI_HOLD				(1U << 16)
-#define OS_QSPI_WP				(1U << 15)
-#define OS_QSPI_CPOL				(1U << 9)
-#define OS_QSPI_ENDI				(1U << 8)
-#define OS_QSPI_ADDR_LEN			(1U << 1)
-#define OS_QSPI_TX_LEN_32			(3U << 1)
-#define OS_QSPI_RX_LEN_32			(3U << 3)
-#define OS_QSPI_DEVICE_0			(1U << 6)
-#define OS_QSPI_PROTO_SINGLE      		(0U << 10)
-#define OS_QSPI_PROTO_DUAL        		(1U << 10)
-#define OS_QSPI_PROTO_QUAD        		(2U << 10)
-#define OS_QSPI_PROTO_QUAD_DDR        		(3U << 10)
-#define OS_QSPI_CMD_ADDR_SERIAL 		(0U << 12)
-#define OS_QSPI_CMD_SERIAL 			(1U << 12)
-#define OS_QSPI_APB_ACCESS 			(0U << 18)
-#define OS_QSPI_SINGLE_BURST			(2U << 18)
+#define OS_QSPI_PH_SHIFT_BYPASS			BIT(24)
+#define OS_QSPI_RX_DLY_HALFCLK			BIT(31)
+#define OS_QSPI_RW				BIT(17)
+#define OS_QSPI_HOLD				BIT(16)
+#define OS_QSPI_WP				BIT(15)
+#define OS_QSPI_CPOL				BIT(9)
+#define OS_QSPI_ENDI				BIT(8)
+#define OS_QSPI_ADDR_32BIT			BIT(0)
+#define OS_QSPI_TX_LEN_16			BIT(1)
+#define OS_QSPI_TX_LEN_24			BIT(2)
+#define OS_QSPI_TX_LEN_32			GENMASK(2, 1)
+#define OS_QSPI_RX_LEN_16			BIT(3)
+#define OS_QSPI_RX_LEN_24			BIT(4)
+#define OS_QSPI_RX_LEN_32			GENMASK(4, 3)
+#define OS_QSPI_DEVICE_0			BIT(6)
+#define OS_QSPI_PROTO_DUAL			BIT(10)
+#define OS_QSPI_PROTO_QUAD			BIT(11)
+#define OS_QSPI_PROTO_QUAD_DDR			GENMASK(11, 10)
+#define OS_QSPI_CMD_SERIAL			BIT(12)
+#define OS_QSPI_NONE_SERIAL			BIT(13)
+#define OS_QSPI_SPEED_CLR_BITS			GENMASK(13, 12)
+#define OS_QSPI_SINGLE_BURST			BIT(19)
+#define OS_QSPI_CONT_BURST			GENMASK(19, 18)
 #define OS_QSPI_0CLK				(0U << 20)
 #define OS_QSPI_0PS				(0U << 22)
 
@@ -83,11 +86,18 @@
  * QSPI baudrate bit
  */
 #define OS_QSPI_DIV_1				0
+#define OS_QSPI_DIV_2				1
+#define OS_QSPI_DIV_4				2
+#define OS_QSPI_DIV_8				3
+#define OS_QSPI_DIV_16				4
+#define OS_QSPI_DIV_32				5
+#define OS_QSPI_DIV_64				6
+#define OS_QSPI_DIV_128				7
 
 /*
  * QSPI system status register state machine
  */
-#define	OS_QSPI_IDLE_STATE			0
+#define	OS_QSPI_IDLE_STATE_MASK			GENMASK(2, 0)
 #define OS_QSPI_CMD_STATE			1
 #define OS_QSPI_ADDR_STATE			2
 #define OS_QSPI_MODE_STATE			3
@@ -104,6 +114,8 @@
 #define OS_QSPI_DEFAULT_NUM_CS			0x2
 #define OS_QSPI_DEFAULT_DEPTH			32
 
+#define OS_QSPI_MAX_MMAP_SZ                     10000000
+
 /**
  * struct os_qspi - Defines qspi driver instance
  * @regs:		Virtual address of the QSPI controller registers
@@ -115,13 +127,16 @@
  */
 
 struct os_qspi {
-	void __iomem	*regs;
-	void __iomem 	*mm_base;
-	u32		irq;
-	struct mutex	list_lock;
-	u32		fifo_depth;
-	u32		burstmode;
-	struct		completion done;
+	void __iomem *regs;
+	void __iomem *mm_base;
+	struct mutex list_lock;
+	resource_size_t mm_size;
+	u32 irq;
+	u32 fifo_depth;
+	u32 burstmode;
+	u32 clk_rate;
+	struct clk *clk;
+	struct completion done;
 };
 
 /*
@@ -140,13 +155,51 @@ static u32 os_qspi_read(struct os_qspi *qspi, int offset)
 
 static void os_qspi_read_fifo(u32 *val, void __iomem *addr)
 {
-	*val = readl_relaxed(addr); //check which one should use
+	udelay(1);//TODO fix this workaround
+	*val = readl_relaxed(addr);
 }
 
 static void os_qspi_write_fifo(u32 *val, void __iomem *addr)
 {
 	writel_relaxed(*val, addr);
 }
+
+static int get_baud_div(u32 div)
+{
+	switch (div) {
+	case 1:
+		return OS_QSPI_DIV_1;
+	case 2:
+		return OS_QSPI_DIV_2;
+	case 3 ... 4:
+		return OS_QSPI_DIV_4;
+	case 5 ... 8:
+		return OS_QSPI_DIV_8;
+	case 9 ... 16:
+		return OS_QSPI_DIV_16;
+	case 17 ... 32:
+		return OS_QSPI_DIV_32;
+	case 33 ... 64:
+		return OS_QSPI_DIV_64;
+	case 65 ... 128:
+		return OS_QSPI_DIV_128;
+	default:
+		return -1;
+	}
+}
+
+/* Make use of os_qspi_wait when the interrupt support is enabled */
+#if 0
+static int os_qspi_wait(struct os_qspi *qspi)
+{
+	reinit_completion(&qspi->done);
+	if (!wait_for_completion_timeout(&qspi->done,
+					 msecs_to_jiffies(1000)))
+		return -ETIMEDOUT;
+
+	return 0;
+}
+#endif
 
 /**
  * os_qspi_setup - Initialize the controller
@@ -163,26 +216,31 @@ static int os_qspi_setup(struct spi_device *spi)
 {
 	struct spi_controller *ctrl = spi->master;
 	struct os_qspi *qspi = spi_controller_get_devdata(ctrl);
-	u32 cfg = 0;
+	u32 cfg = 0, div, clk_div;
 
 	if (ctrl->busy)
 		return -EBUSY;
-#if 0
-	TBD
-	clk_enable(qspi->refclk);
-	clk_enable(qspi->pclk);
-#endif
+
+	if (!spi->max_speed_hz)
+		return -EINVAL;
+
+	div = DIV_ROUND_UP(qspi->clk_rate, spi->max_speed_hz);
+	clk_div = get_baud_div(div);
+	if (clk_div < 0)
+		return -EINVAL;
+
 	cfg = os_qspi_read(qspi, OS_QSPI_CMD_CFG);
-	cfg |= ~OS_QSPI_PH_SHIFT_BYPASS | ~OS_QSPI_RX_DLY_HALFCLK | OS_QSPI_WP | OS_QSPI_HOLD | ~OS_QSPI_ENDI | OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32 | OS_QSPI_DEVICE_0 | OS_QSPI_0CLK | OS_QSPI_0PS;
+	cfg |= OS_QSPI_WP | OS_QSPI_HOLD | OS_QSPI_TX_LEN_32 |
+	       OS_QSPI_DEVICE_0 | OS_QSPI_RX_LEN_32;
+	cfg &= ~(OS_QSPI_PH_SHIFT_BYPASS | OS_QSPI_RX_DLY_HALFCLK |
+		 OS_QSPI_ENDI);
 	os_qspi_write(qspi, OS_QSPI_CMD_CFG,cfg);
 
 	/* Clear the interrupts */
 	os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, ~0U);
-
-	os_qspi_write(qspi, OS_QSPI_BAUD_RATE_REG, OS_QSPI_DIV_1);
+	os_qspi_write(qspi, OS_QSPI_BAUD_RATE_REG, clk_div);
 
 	return 0;
-
 }
 
 /**
@@ -191,79 +249,91 @@ static int os_qspi_setup(struct spi_device *spi)
  * @dev_id:     Pointer to the xqspi structure
  * Return:      IRQ_HANDLED when interrupt is handled; IRQ_NONE otherwise.
  */
-
 static irqreturn_t os_qspi_irq(int irq, void *dev_id)
 {
 	struct os_qspi *qspi = (struct os_qspi *)dev_id;
 	u32 sr;
 
 	sr = os_qspi_read(qspi,OS_QSPI_INTR_STAT_REG);
-
-	if (!(sr & OS_QSPI_INTR_MASK_APB_TX_OK)) {
-		/* disable irq  TBD*/
-		complete(&qspi->done);
+	if ((sr & OS_QSPI_INT_MASK_APB_RX) ||
+	    (sr & OS_QSPI_INT_MASK_APB_TX)) {
+		sr = os_qspi_read(qspi, OS_QSPI_INT_MASK_CLR);
+		sr |= 0x01;
+		os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, sr);
 	}
-
+	complete(&qspi->done);
 	return IRQ_HANDLED;
 }
 
-
 static int os_qspi_mmap_read(struct os_qspi *qspi, const struct spi_mem_op *op)
 {
-	u8 dummy_buf[1];
+	u32 tmp, sr;
 
-	/*dummy read*/
-	memcpy_fromio(dummy_buf, qspi->mm_base + op->addr.val,1);
+	if (op->data.dir == SPI_MEM_DATA_IN) {
+		memcpy_fromio(op->data.buf.in, qspi->mm_base + op->addr.val,
+			      op->data.nbytes);
+	} else {
+		memcpy_toio(qspi->mm_base + op->addr.val, op->data.buf.out,
+			    op->data.nbytes);
+		/* TODO make use of os_qspi_wait() instead of manual polling */
+		if (readl_relaxed_poll_timeout_atomic(qspi->regs +
+						      OS_QSPI_INTR_STAT_REG, sr,
+						      (sr &
+						      OS_QSPI_INT_MASK_BURST),
+						      1, 1000))
+			printk(KERN_ERR "OS_QSPI: AXI write timeout\n");
 
-	memcpy_fromio(op->data.buf.in, qspi->mm_base + op->addr.val,
-			op->data.nbytes);
+		os_qspi_write(qspi, OS_QSPI_BURST_CTRL_REG, 0x01);
+		tmp = os_qspi_read(qspi, OS_QSPI_INT_MASK_CLR);
+		tmp |= 0x01;
+		os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, tmp);
+	}
+
 	return 0;
-
 }
 
 static int os_qspi_wait_idle(struct os_qspi *qspi)
 {
 	u32 sr;
+	int ret;
 
-	return readl_relaxed_poll_timeout_atomic(qspi->regs + OS_QSPI_SYS_STATUS_REG, sr,
-			!(sr | OS_QSPI_IDLE_STATE), 1, 100);
+	ret = readl_relaxed_poll_timeout_atomic(qspi->regs +
+						OS_QSPI_SYS_STATUS_REG, sr,
+						!(sr &
+						OS_QSPI_IDLE_STATE_MASK), 1,
+						100);
+	if (ret)
+		printk(KERN_ERR "OS_QSPI: busy timeout (stat:%#x)\n", sr);
+
+	return ret;
 }
-
 
 static int os_qspi_xfer(struct os_qspi *qspi,const struct spi_mem_op *op)
 {
 	void (*xfer_fifo)(u32 *val, void __iomem *addr);
-	u32 len = op->data.nbytes,sr,mask;
+	u32 mask;
 	u32 *buf;
-	int ret,reg;
+	int reg;
 
 	if (op->data.dir == SPI_MEM_DATA_IN) {
 		xfer_fifo = os_qspi_read_fifo;
 		buf = op->data.buf.in;
 		reg = OS_QSPI_RX_DATA ;
-		mask = OS_QSPI_INTR_MASK_APB_RX_OK;
+		mask = OS_QSPI_INT_MASK_APB_RX;
 	} else {
 		xfer_fifo = os_qspi_write_fifo;
 		buf = (u32 *)op->data.buf.out;
 		reg = OS_QSPI_TX_DATA ;
-		mask = OS_QSPI_INTR_MASK_APB_TX_OK;
+		mask = OS_QSPI_INT_MASK_APB_TX;
 	}
 
+	if (op->data.dir == SPI_MEM_DATA_IN)
+		os_qspi_write(qspi, OS_QSPI_START_CMD_REG, 0x1);
 
-	os_qspi_write(qspi,OS_QSPI_START_CMD_REG,0x1);
+	xfer_fifo(buf++, qspi->regs + reg);
 
-	while (len--) {
-		ret = readl_relaxed_poll_timeout_atomic(qspi->regs + OS_QSPI_INTR_STAT_REG,
-				sr, (sr & mask), 1,
-				OS_FIFO_TIMEOUT_US);
-		if (ret) {
-			printk(KERN_ERR "fifo timeout (len:%d stat:%#x)\n",
-					len, sr);
-			return ret;
-		}
-		os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, ~mask);
-		xfer_fifo(buf++, qspi->regs + reg);
-	}
+	if (op->data.dir == SPI_MEM_DATA_OUT)
+		os_qspi_write(qspi, OS_QSPI_START_CMD_REG, 0x1);
 
 	return 0;
 }
@@ -282,70 +352,135 @@ static int os_qspi_xfer_mode(struct os_qspi *qspi, const struct spi_mem_op *op)
 static int os_qspi_xfer_setup(struct spi_mem *mem, const struct spi_mem_op *op)
 {
 	struct os_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
-	u32 custom_cmd, cfg, addr_max;
+	u32 custom_cmd = 0, cfg, addr_max, dummy_clocks;
 	int err = 0;
 
-	printk(KERN_DEBUG "cmd:%#x mode:%d.%d.%d.%d addr:%#llx len:%#x\n",
-			op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
-			op->dummy.buswidth, op->data.buswidth,
-			op->addr.val, op->data.nbytes);
+	pr_debug("os-qspi: cmd:%#x mode:%d.%d.%d.%d addr:%#llx len:%#x\n",
+		 op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
+		 op->dummy.buswidth, op->data.buswidth, op->addr.val,
+		 op->data.nbytes);
 
 	err = os_qspi_wait_idle(qspi);
 	if (err)
 		return -EBUSY;
 
+	/* Enable all interrupts */
+	os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, 0x0);
 
-	addr_max = op->addr.val + op->data.nbytes + 1;
 	cfg = os_qspi_read(qspi, OS_QSPI_CMD_CFG);
-	custom_cmd = os_qspi_read(qspi,OS_QSPI_CUSTOM_CMD_REG);
+	os_qspi_write(qspi, OS_QSPI_CUSTOM_CMD_REG, 0);
+	os_qspi_write(qspi, OS_QSPI_ADDR_REG, op->addr.val);
+	addr_max = op->addr.val + op->data.nbytes + 1;
 
-	if (op->data.dir == SPI_MEM_DATA_IN) {
-		custom_cmd |= OS_QSPI_RX_DATA_PH_EN | ~OS_QSPI_TX_DATA_PH_EN;
-		cfg |= OS_QSPI_RW;
-		if (addr_max && op->addr.buswidth){ //TBDneed to check with flash size
-			qspi->burstmode = MODE_MM;
-			cfg |= OS_QSPI_SINGLE_BURST;
-		}else{
-			qspi->burstmode = MODE_APBR;
-			cfg |= OS_QSPI_APB_ACCESS;
-		}
-	} else {
-		custom_cmd |= OS_QSPI_TX_DATA_PH_EN | ~OS_QSPI_RX_DATA_PH_EN;
-		qspi->burstmode = MODE_APBW;
-		cfg |= OS_QSPI_APB_ACCESS | ~OS_QSPI_RW;
+	if (op->cmd.opcode) {
+		custom_cmd |= OS_QSPI_OPCODE_PH_EN;
+		os_qspi_write(qspi, OS_QSPI_CMD_REG, op->cmd.opcode);
 	}
 
-	custom_cmd |= OS_QSPI_OPCODE_PH_EN;
-	os_qspi_write(qspi,OS_QSPI_CMD_REG,op->cmd.opcode);
+	if (op->data.dir == SPI_MEM_DATA_IN) {
+		cfg |= OS_QSPI_RW;
+		if (op->data.nbytes) {
+			custom_cmd |= OS_QSPI_RX_DATA_PH_EN;
+			custom_cmd &= ~OS_QSPI_TX_DATA_PH_EN;
+		}
+		if (addr_max < qspi->mm_size && op->addr.buswidth &&
+		    op->data.nbytes){
+			qspi->burstmode = MODE_MM;
+			cfg &= ~OS_QSPI_CONT_BURST;
+			cfg |= OS_QSPI_SINGLE_BURST;
+			cfg |= OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32;
+		}else{
+			qspi->burstmode = MODE_APBR;
+			/* configure APB access mode */
+			cfg &= ~OS_QSPI_CONT_BURST;
+		}
+	} else {
+		cfg &= ~OS_QSPI_RW;
+		if (op->data.nbytes) {
+			custom_cmd |= OS_QSPI_TX_DATA_PH_EN;
+			custom_cmd &= ~OS_QSPI_RX_DATA_PH_EN;
+		}
+		if (addr_max < qspi->mm_size && op->addr.buswidth &&
+		    op->data.nbytes){
+			qspi->burstmode = MODE_MM;
+			cfg |= OS_QSPI_CONT_BURST;
+			cfg |= OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32;
+		} else {
+			qspi->burstmode = MODE_APBW;
+			/* configure APB access mode */
+			cfg &= ~OS_QSPI_CONT_BURST;
+		}
+	}
 
 	if (op->addr.nbytes) {
 		custom_cmd |= OS_QSPI_ADDR_PH_EN;
-		os_qspi_write(qspi,OS_QSPI_ADDR_REG,op->addr.val);
+		os_qspi_write(qspi, OS_QSPI_ADDR_REG, op->addr.val);
 		if(op->addr.nbytes == 3)
-			cfg |= OS_QSPI_ADDR_LEN;
+			cfg &= ~OS_QSPI_ADDR_32BIT;
 		else
-			cfg |= ~OS_QSPI_ADDR_LEN;
+			cfg |= OS_QSPI_ADDR_32BIT;
 	}
 
 	if (op->dummy.nbytes){
 		custom_cmd |= OS_QSPI_DUMMY_PH_EN;
-		os_qspi_write(qspi,OS_QSPI_DUMMY_DLP_REG,(op->dummy.nbytes << 7));
+		dummy_clocks = op->dummy.nbytes * 8 / op->dummy.buswidth;
+		dummy_clocks -= 1;
+		dummy_clocks &= 0x0F;
+		os_qspi_write(qspi, OS_QSPI_DUMMY_DLP_REG, (dummy_clocks << 8));
 	}
 
+	/* Clear cfg op_mode bits */
+	cfg &= ~OS_QSPI_PROTO_QUAD_DDR;
 	switch (op->data.buswidth) {
-		case SPI_NBITS_QUAD:
-			cfg |= OS_QSPI_PROTO_QUAD;
-			break;
-		case SPI_NBITS_DUAL:
-			cfg |= OS_QSPI_PROTO_DUAL;
-			break;
-		case SPI_NBITS_SINGLE:
-			cfg |= OS_QSPI_PROTO_SINGLE;
-			break;
+	case SPI_NBITS_SINGLE:
+		cfg &= ~OS_QSPI_PROTO_QUAD_DDR;
+		break;
+	case SPI_NBITS_DUAL:
+		cfg |= OS_QSPI_PROTO_DUAL;
+		break;
+	case SPI_NBITS_QUAD:
+		cfg |= OS_QSPI_PROTO_QUAD;
+		break;
 	}
 
-	os_qspi_write(qspi,OS_QSPI_CUSTOM_CMD_REG,custom_cmd);
+	/* Clear cfg speed_mode bits */
+	cfg &= ~OS_QSPI_SPEED_CLR_BITS;
+
+	if (op->cmd.buswidth == 1 && op->addr.buswidth == 1)
+		cfg &= ~OS_QSPI_SPEED_CLR_BITS;
+
+	if (op->cmd.buswidth == 1 && op->addr.buswidth != 1)
+		cfg |= OS_QSPI_CMD_SERIAL;
+
+	if (op->cmd.buswidth != 1)
+		cfg |= OS_QSPI_NONE_SERIAL;
+
+	if ((qspi->burstmode == MODE_APBR || qspi->burstmode == MODE_APBW) &&
+	    op->data.nbytes) {
+		cfg &= ~(OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32);
+		switch (op->data.nbytes) {
+		case 1:
+			cfg &= ~(OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32);
+			break;
+		case 2:
+			cfg |= OS_QSPI_TX_LEN_16 | OS_QSPI_RX_LEN_16;
+			break;
+		case 3:
+			cfg |= OS_QSPI_TX_LEN_24 | OS_QSPI_RX_LEN_24;
+			break;
+		default:
+			cfg |= OS_QSPI_TX_LEN_32 | OS_QSPI_RX_LEN_32;
+			break;
+		}
+	}
+
+	trace_printk("YS: cfg=%x cust_cmd=%x\n", cfg, custom_cmd);
+	os_qspi_write(qspi, OS_QSPI_CUSTOM_CMD_REG, custom_cmd);
 	os_qspi_write(qspi, OS_QSPI_CMD_CFG,cfg);
+
+	if ((qspi->burstmode == MODE_APBR || qspi->burstmode == MODE_APBW) &&
+	    !op->data.nbytes)
+		os_qspi_write(qspi, OS_QSPI_START_CMD_REG, 0x01);
 
 	err = os_qspi_xfer_mode(qspi, op);
 
@@ -361,7 +496,7 @@ static int os_qspi_xfer_setup(struct spi_mem *mem, const struct spi_mem_op *op)
  * Return: 0 in case of success, a negative error code otherwise.
  */
 static int os_qspi_exec_mem_op(struct spi_mem *mem,
-		const struct spi_mem_op *op)
+			       const struct spi_mem_op *op)
 {
 	struct os_qspi *qspi = spi_master_get_devdata(mem->spi->master);
 	int ret = 0;
@@ -406,12 +541,15 @@ static int os_qspi_probe(struct platform_device *pdev)
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "qspi_mm");
-        qspi->mm_base = devm_ioremap_resource(&pdev->dev, res);
-        if (IS_ERR(qspi->mm_base)) {
-                ret = PTR_ERR(qspi->mm_base);
-                goto put_master;
-        }
+	qspi->mm_base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(qspi->mm_base)) {
+		ret = PTR_ERR(qspi->mm_base);
+		goto put_master;
+	}
 
+	qspi->mm_size = resource_size(res);
+	if (qspi->mm_size > OS_QSPI_MAX_MMAP_SZ)
+		return -EINVAL;
 
 	qspi->irq = platform_get_irq(pdev, 0);
 	if (qspi->irq < 0) {
@@ -430,7 +568,27 @@ static int os_qspi_probe(struct platform_device *pdev)
 
 	init_completion(&qspi->done);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "sifive,fifo-depth",&qspi->fifo_depth);
+	qspi->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(qspi->clk)) {
+		ret = PTR_ERR(qspi->clk);
+		dev_err(&pdev->dev, "Cannot get clk err:%d\n", ret);
+		goto put_master;
+	}
+
+	qspi->clk_rate = clk_get_rate(qspi->clk);
+	if (!qspi->clk_rate) {
+		ret = -EINVAL;
+		goto put_master;
+	}
+
+	ret = clk_prepare_enable(qspi->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Cannot enable the clock\n");
+		goto put_master;
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "sifive,fifo-depth",
+				   &qspi->fifo_depth);
 	if (ret < 0)
 		qspi->fifo_depth = OS_QSPI_DEFAULT_DEPTH;
 
@@ -443,10 +601,17 @@ static int os_qspi_probe(struct platform_device *pdev)
 	master->bus_num = pdev->id;
 	master->setup = os_qspi_setup;
 	master->num_chipselect = 2;
-	master->mode_bits = SPI_MODE_0 | SPI_CS_HIGH | SPI_TX_DUAL | SPI_TX_QUAD | SPI_RX_DUAL | SPI_RX_QUAD;
+	master->mode_bits = SPI_MODE_0 | SPI_CS_HIGH | SPI_TX_DUAL |
+			    SPI_TX_QUAD | SPI_RX_DUAL | SPI_RX_QUAD;
 	master->mem_ops = &os_qspi_mem_ops;
 
+	ret = devm_spi_register_master(&pdev->dev, master);
+	if (!ret) {
+		dev_dbg(&pdev->dev, "os-qspi driver probed\n");
+		return 0;
+	}
 put_master:
+	clk_disable_unprepare(qspi->clk);
 	spi_master_put(master);
 
 	return ret;
@@ -467,7 +632,7 @@ static int os_qspi_remove(struct platform_device *pdev)
 	struct os_qspi *qspi = spi_master_get_devdata(master);
 
 	mutex_destroy(&qspi->list_lock);
-	//clk_disable_unprepare(qspi->clk); check and do
+	clk_disable_unprepare(qspi->clk);
 	spi_master_put(master);
 
 	return 0;
