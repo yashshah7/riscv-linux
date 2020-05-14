@@ -510,7 +510,11 @@ static int __init dw_i2c_init_driver(void)
 {
 	return platform_driver_register(&dw_i2c_driver);
 }
+#ifdef CONFIG_SOC_SIFIVE_NB2
+module_init(dw_i2c_init_driver);
+#else
 subsys_initcall(dw_i2c_init_driver);
+#endif
 
 static void __exit dw_i2c_exit_driver(void)
 {
