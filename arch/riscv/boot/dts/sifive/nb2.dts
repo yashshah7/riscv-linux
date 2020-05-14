@@ -1,24 +1,49 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/* Copyright (c) 2019-2020 SiFive, Inc */
+
 /dts-v1/;
+
+/* Clock frequency (in Hz) of the PCB crystal for rtcclk */
+#define RTCCLK_FREQ		1000000
 
 / {
 	#address-cells = <2>;
 	#size-cells = <2>;
 	compatible = "sifive,nb2";
 
+	aliases {
+		i2c0 = &i2c1;
+        };
+
+        chosen {
+                bootargs = "root=/dev/ram0 console=ttyS0,9600n8";
+                stdout-path = "/soc/serial@20505000:9600n8";
+        };
+
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		timebase-frequency = <RTCCLK_FREQ>;
 		cpu0: cpu@0 {
-			compatible = "sifive,s21", "sifive,bullet0", "riscv";
+			compatible = "sifive,u74", "sifive,bullet0", "riscv";
+			d-cache-block-size = <64>;
+			d-cache-sets = <64>;
+			d-cache-size = <32768>;
+			d-tlb-sets = <1>;
+			d-tlb-size = <40>;
 			device_type = "cpu";
 			i-cache-block-size = <64>;
 			i-cache-sets = <128>;
-			i-cache-size = <16384>;
+			i-cache-size = <32768>;
+			i-tlb-sets = <1>;
+			i-tlb-size = <40>;
+			mmu-type = "riscv,sv39";
 			//next-level-cache = <&ccache>;
 			reg = <0x0>;
-			riscv,isa = "rv64imac";
-			status = "disabled";
-			cpu0_intc: interrupt-controller {
+			riscv,isa = "rv64imafdc";
+			tlb-split;
+			cpu1_intc: interrupt-controller {
 				#interrupt-cells = <1>;
 				compatible = "riscv,cpu-intc";
 				interrupt-controller;
@@ -42,7 +67,8 @@
 			reg = <0x1>;
 			riscv,isa = "rv64imafdc";
 			tlb-split;
-			cpu1_intc: interrupt-controller {
+			status = "disable";
+			cpu2_intc: interrupt-controller {
 				#interrupt-cells = <1>;
 				compatible = "riscv,cpu-intc";
 				interrupt-controller;
@@ -66,7 +92,8 @@
 			reg = <0x2>;
 			riscv,isa = "rv64imafdc";
 			tlb-split;
-			cpu2_intc: interrupt-controller {
+			status = "disable";
+			cpu3_intc: interrupt-controller {
 				#interrupt-cells = <1>;
 				compatible = "riscv,cpu-intc";
 				interrupt-controller;
@@ -90,30 +117,7 @@
 			reg = <0x3>;
 			riscv,isa = "rv64imafdc";
 			tlb-split;
-			cpu3_intc: interrupt-controller {
-				#interrupt-cells = <1>;
-				compatible = "riscv,cpu-intc";
-				interrupt-controller;
-			};
-		};
-		cpu4: cpu@4 {
-			compatible = "sifive,u74", "sifive,bullet0", "riscv";
-			d-cache-block-size = <64>;
-			d-cache-sets = <64>;
-			d-cache-size = <32768>;
-			d-tlb-sets = <1>;
-			d-tlb-size = <40>;
-			device_type = "cpu";
-			i-cache-block-size = <64>;
-			i-cache-sets = <128>;
-			i-cache-size = <32768>;
-			i-tlb-sets = <1>;
-			i-tlb-size = <40>;
-			mmu-type = "riscv,sv39";
-			//next-level-cache = <&ccache>;
-			reg = <0x4>;
-			riscv,isa = "rv64imafdc";
-			tlb-split;
+			status = "disable";
 			cpu4_intc: interrupt-controller {
 				#interrupt-cells = <1>;
 				compatible = "riscv,cpu-intc";
@@ -122,22 +126,31 @@
 		};
 	};
 
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x20000000>;
+	};
+
+	hfclk: hfclk {
+                #clock-cells = <0>;
+                compatible = "fixed-clock";
+                clock-frequency = <10000000>;
+        };
+
 	soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
-		compatible = "sifive,nb2";
+		compatible = "sifive,nb2", "simple-bus";
+		ranges;
+
                 plic0: interrupt-controller@c000000 {
                         #interrupt-cells = <1>;
                         compatible = "sifive,plic-1.0.0";
                         reg = <0x0 0xc000000 0x0 0x4000000>;
-                        //riscv,ndev = <53>;
+                        riscv,ndev = <131>;
                         interrupt-controller;
                         interrupts-extended = < 
-                                &cpu0_intc 0xffffffff
-                                &cpu1_intc 0xffffffff &cpu1_intc 9
-                                &cpu2_intc 0xffffffff &cpu2_intc 9
-                                &cpu3_intc 0xffffffff &cpu3_intc 9
-                                &cpu4_intc 0xffffffff &cpu4_intc 9>;
+                                &cpu1_intc 11 &cpu1_intc 9>;
                 };
 		sram: sram@40200000 {
 			compatible = "mmio-sram";
@@ -148,37 +161,48 @@
 			reg = <0x0 0x20006000 0x0 0x00FF>;
 			#address-cells = <1>;
 			#size-cells = <0>;
+			porta: gpio-controller@0 {
+				compatible = "snps,dw-apb-gpio-port";
+				gpio-controller;
+				interrupt-parent = <&plic0>;
+				interrupts = <79>;
+				#gpio-cells = <2>;
+				snps,nr-gpios = <16>;
+				reg = <0>;
+			};
 		};
                 i2c1: i2c@20508000 {
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x20508000 0x0 0x00FF>;
-                        //interrupt-parent = <&plic0>;
-                        //interrupts = <50>;
-                        //clocks = <&prci PRCI_CLK_TLCLK>;
-			#address-cells = <1>;
-			#size-cells = <0>;
+			interrupt-parent = <&plic0>;
+			interrupts = <60>;
+			clock-frequency = <100000>;
+			clocks = <&hfclk>;
                 };
                 i2c2: i2c@20509000 {
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x20509000 0x0 0x00FF>;
-                        //interrupt-parent = <&plic0>;
-                        //interrupts = <50>;
-                        //clocks = <&prci PRCI_CLK_TLCLK>;
-			#address-cells = <1>;
-			#size-cells = <0>;
+			interrupt-parent = <&plic0>;
+			interrupts = <61>;
+			clock-frequency = <100000>;
+			clocks = <&hfclk>;
+			status = "disable";
                 };
                 i2c3: i2c@2050A000 {
 			compatible = "snps,designware-i2c";
 			reg = <0x0 0x2050A000 0x0 0x00FF>;
-                        //interrupt-parent = <&plic0>;
-                        //interrupts = <50>;
-                        //clocks = <&prci PRCI_CLK_TLCLK>;
-			#address-cells = <1>;
-			#size-cells = <0>;
+			interrupt-parent = <&plic0>;
+			interrupts = <62>;
+			clock-frequency = <100000>;
+			clocks = <&hfclk>;
+			status = "disable";
 		};
 		spi0: spi@20500000 {
 			compatile = "cdns,spi-r1p6";
 			reg = <0x0 0x20500000 0x0 0x00FF>;
+			interrupt-parent = <&plic0>;
+			interrupts = <47>;
+			clocks = <&hfclk>;
 			//clock-names = "ref_clk", "pclk";
 			//clocks = <&clkc 26>, <&clkc 35>;
 			//interrupt-parent = <&intc>;
@@ -189,6 +213,7 @@
                 spi1: spi@20501000 {
                         compatile = "cdns,spi-r1p6";
                         reg = <0x0 0x20501000 0x0 0x00FF>;
+			status = "disable";
                         //clock-names = "ref_clk", "pclk";
                         //clocks = <&clkc 26>, <&clkc 35>;
                         //interrupt-parent = <&intc>;
@@ -199,6 +224,7 @@
                 spi2: spi@00502000 {
                         compatile = "cdns,spi-r1p6";
                         reg = <0x0 0x20502000 0x0 0x00FF>;
+			status = "disable";
                         //clock-names = "ref_clk", "pclk";
                         //clocks = <&clkc 26>, <&clkc 35>;
                         //interrupt-parent = <&intc>;
@@ -209,6 +235,7 @@
                 spi3: spi@20503000 {
                         compatile = "cdns,spi-r1p6";
                         reg = <0x0 0x20503000 0x0 0x00FF>;
+			status = "disable";
                         //clock-names = "ref_clk", "pclk";
                         //clocks = <&clkc 26>, <&clkc 35>;
                         //interrupt-parent = <&intc>;
@@ -217,15 +244,19 @@
                         //is-decoded-cs = <0>;
                 };
                 uart1: serial@20505000 {
-                        compatible = "snps,dw-apb-uart";
-                        reg = <0x0 0x20505000 0x0 0x00FF>;
-                        //interrupt-parent = <&plic0>;
-                        //interrupts = <4>;
-                        //clocks = <&prci PRCI_CLK_TLCLK>;
+			compatible = "snps,dw-apb-uart";
+			reg = <0x0 0x20505000 0x0 0x00FF>;
+			clock-frequency = <10000000>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			interrupt-parent = <&plic0>;
+			interrupts = <54>;
+			clocks = <&hfclk>;
                 };
                 uart2: serial@20506000 {
                         compatible = "snps,dw-apb-uart";
                         reg = <0x0 0x20506000 0x0 0x00FF>;
+			status = "disable";
                         //interrupt-parent = <&plic0>;
                         //interrupts = <4>;
                         //clocks = <&prci PRCI_CLK_TLCLK>;
@@ -233,6 +264,7 @@
                 uart3: serial@20507000 {
                         compatible = "snps,dw-apb-uart";
                         reg = <0x0 0x20507000 0x0 0x00FF>;
+			status = "disable";
                         //interrupt-parent = <&plic0>;
                         //interrupts = <4>;
                         //clocks = <&prci PRCI_CLK_TLCLK>;
@@ -240,29 +272,30 @@
 	        watchdog0: watchdog@2050E000 {
 		        compatible = "snps,dw-wdt";
 			reg = <0x0 0x2050E000 0x0 0x00FF>;
+			clocks = <&hfclk>;
 			//interrupts = <0 171 4>; 
 		};
 		emmc: sdhci@21009000 {
 			compatible = "cdns,sd4hc";
 			reg = <0x0 0x21009000 0x0 0x0FFF>;
-			//interrupts = <0 78 4>; 
-			//clocks = <&clk 4>; 
-			//bus-width = <8>;
-			//mmc-ddr-1_8v;
-			//mmc-hs200-1_8v;
-			//mmc-hs400-1_8v;
-			//cdns,phy-dll-delay-sdclk = <0>;
+			interrupt-parent = <&plic0>;
+			interrupts = <18>;
+			clocks = <&hfclk>;
+			bus-width = <8>;
+			non-removable;
+			mmc-hs400-1_8v;
 		};
 		rtc: rtc@20007000 {
 			compatible = "snps,dw-apb-rtc";
 			reg = <0x0 0x20007000 0x0 0x007F>;
-			//interrupts = <>;
-			//interrupt-parent = <>;
+			interrupt-parent = <&plic0>;
+			interrupts = <63>;
 		};
 		qspi: qspi@20400000 {
 			compatible = "open-silicon,qspi0";
 			reg = <0x0 0x20400000 0x0 0x0FFF
 			       0x0 0x20000000 0x3F 0xFFFF>;
+			status = "disable";
 			//interrupt-parent = <&plic0>;
                         //interrupts = <52>;
                         //clocks = <&prci PRCI_CLK_TLCLK>;
@@ -270,4 +303,5 @@
                         #size-cells = <0>;
 		};
 	};
+
 };
