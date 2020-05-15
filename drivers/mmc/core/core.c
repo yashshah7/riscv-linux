@@ -1270,6 +1270,9 @@ power_cycle:
  */
 void mmc_set_timing(struct mmc_host *host, unsigned int timing)
 {
+#ifdef CONFIG_SOC_SIFIVE_NB2
+	timing = 0x1; //nb2 fpga0p1 image has tested support for MMC_SDR
+#endif
 	host->ios.timing = timing;
 	mmc_set_ios(host);
 }

@@ -384,6 +384,11 @@ static int sdhci_cdns_probe(struct platform_device *pdev)
 	if (ret)
 		goto free;
 
+#ifdef CONFIG_SOC_SIFIVE_NB2
+	host->quirks |= SDHCI_QUIRK_BROKEN_DMA |
+                SDHCI_QUIRK_BROKEN_ADMA | SDHCI_QUIRK2_DISABLE_HW_TIMEOUT; //nb2 fpga0p1 image has tested support for PIO
+#endif
+
 	ret = sdhci_add_host(host);
 	if (ret)
 		goto free;
