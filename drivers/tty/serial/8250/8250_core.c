@@ -332,6 +332,9 @@ static int univ8250_setup_irq(struct uart_8250_port *up)
 	 * hardware interrupt, we use a timer-based system.  The original
 	 * driver used to do this with IRQ0.
 	 */
+#ifdef CONFIG_SOC_SIFIVE_NB2
+	port->irq = 0; //TODO:to debug interrupt;need to remove
+#endif
 	if (!port->irq) {
 		mod_timer(&up->timer, jiffies + uart_poll_timeout(port));
 	} else
