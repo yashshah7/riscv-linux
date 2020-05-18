@@ -424,6 +424,9 @@ static int os_qspi_xfer_setup(struct spi_mem *mem, const struct spi_mem_op *op)
 	if (op->dummy.nbytes){
 		custom_cmd |= OS_QSPI_DUMMY_PH_EN;
 		dummy_clocks = op->dummy.nbytes * 8 / op->dummy.buswidth;
+		if (op->data.dtr)
+			dummy_clocks /= 2;
+
 		dummy_clocks -= 1;
 		dummy_clocks &= 0x0F;
 		os_qspi_write(qspi, OS_QSPI_DUMMY_DLP_REG, (dummy_clocks << 8));
@@ -442,6 +445,9 @@ static int os_qspi_xfer_setup(struct spi_mem *mem, const struct spi_mem_op *op)
 		cfg |= OS_QSPI_PROTO_QUAD;
 		break;
 	}
+
+	if (op->data.dtr)
+		cfg |= OS_QSPI_PROTO_QUAD_DDR;
 
 	/* Clear cfg speed_mode bits */
 	cfg &= ~OS_QSPI_SPEED_CLR_BITS;
@@ -487,6 +493,64 @@ static int os_qspi_xfer_setup(struct spi_mem *mem, const struct spi_mem_op *op)
 	return err;
 }
 
+static int os_qspi_check_buswidth(struct spi_mem *mem, u8 buswidth, bool tx)
+{
+	u32 mode = mem->spi->mode;
+
+	switch (buswidth) {
+	case 1:
+		return 0;
+
+	case 2:
+		if ((tx && (mode & (SPI_TX_DUAL | SPI_TX_QUAD))) ||
+		    (!tx && (mode & (SPI_RX_DUAL | SPI_RX_QUAD))))
+			return 0;
+
+		break;
+
+	case 4:
+		if ((tx && (mode & SPI_TX_QUAD)) ||
+		    (!tx && (mode & SPI_RX_QUAD)))
+			return 0;
+
+		break;
+
+	case 8:
+		if ((tx && (mode & SPI_TX_OCTAL)) ||
+		    (!tx && (mode & SPI_RX_OCTAL)))
+			return 0;
+
+		break;
+
+	default:
+		break;
+	}
+
+	return -ENOTSUPP;
+}
+
+bool os_qspi_mem_supports_op(struct spi_mem *mem,
+			     const struct spi_mem_op *op)
+{
+	if (os_qspi_check_buswidth(mem, op->cmd.buswidth, true))
+		return false;
+
+	if (op->addr.nbytes &&
+	    os_qspi_check_buswidth(mem, op->addr.buswidth, true))
+		return false;
+
+	if (op->dummy.nbytes &&
+	    os_qspi_check_buswidth(mem, op->dummy.buswidth, true))
+		return false;
+
+	if (op->data.dir != SPI_MEM_NO_DATA &&
+	    os_qspi_check_buswidth(mem, op->data.buswidth,
+				   op->data.dir == SPI_MEM_DATA_OUT))
+		return false;
+
+	return true;
+}
+
 /**
  * os_qspi_exec_mem_op() - Initiates the QSPI transfer
  * @mem: the SPI memory
@@ -510,6 +574,7 @@ static int os_qspi_exec_mem_op(struct spi_mem *mem,
 
 static const struct spi_controller_mem_ops os_qspi_mem_ops = {
 	.exec_op = os_qspi_exec_mem_op,
+	.supports_op = os_qspi_mem_supports_op,
 };
 
 /**
