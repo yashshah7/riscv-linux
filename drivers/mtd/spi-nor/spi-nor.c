@@ -148,6 +148,13 @@ struct sfdp_header {
 #define BFPT_DWORD15_QER_SR2_BIT1_NO_RD		(0x4UL << 20)
 #define BFPT_DWORD15_QER_SR2_BIT1		(0x5UL << 20) /* Spansion */
 
+static void
+spi_nor_set_pp_settings(struct spi_nor_pp_command *, u8, enum spi_nor_protocol);
+
+static void
+spi_nor_set_read_settings(struct spi_nor_read_command *, u8, u8, u8,
+			  enum spi_nor_protocol);
+
 struct sfdp_bfpt {
 	u32	dwords[BFPT_DWORD_MAX];
 };
@@ -316,9 +323,12 @@ static ssize_t spi_nor_spimem_read_data(struct spi_nor *nor, loff_t from,
 	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(nor->read_proto);
 	op.dummy.buswidth = op.addr.buswidth;
 	op.data.buswidth = spi_nor_get_protocol_data_nbits(nor->read_proto);
+	op.data.dtr = spi_nor_protocol_is_dtr(nor->read_proto);
 
 	/* convert the dummy cycles to the number of bytes */
 	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
+	if (op.data.dtr)
+		op.dummy.nbytes *= 2;
 
 	return spi_nor_spimem_xfer_data(nor, &op);
 }
@@ -363,6 +373,7 @@ static ssize_t spi_nor_spimem_write_data(struct spi_nor *nor, loff_t to,
 	op.cmd.buswidth = spi_nor_get_protocol_inst_nbits(nor->write_proto);
 	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(nor->write_proto);
 	op.data.buswidth = spi_nor_get_protocol_data_nbits(nor->write_proto);
+	op.data.dtr = spi_nor_protocol_is_dtr(nor->write_proto);
 
 	if (nor->program_opcode == SPINOR_OP_AAI_WP && nor->sst_write_second)
 		op.addr.nbytes = 0;
@@ -2241,6 +2252,19 @@ is25lp256_post_bfpt_fixups(struct spi_nor *nor,
 		BFPT_DWORD1_ADDRESS_BYTES_3_ONLY)
 		nor->addr_width = 4;
 
+	if (strcmp(nor->info->name, "is25wp256") == 0) {
+		params->hwcaps.mask |= SNOR_HWCAPS_READ_1_4_4_DTR |
+				       SNOR_HWCAPS_PP_1_1_4;
+		spi_nor_set_pp_settings
+			(&params->page_programs[SNOR_CMD_PP_1_1_4],
+			 SPINOR_OP_PP_1_1_4,
+			 SNOR_PROTO_1_1_4);
+
+		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_1_4_4_DTR],
+					  0, 6, SPINOR_OP_READ_1_4_4_DTR,
+					  SNOR_PROTO_1_4_4_DTR);
+	}
+
 	return 0;
 }
 
@@ -3136,9 +3160,13 @@ static int spi_nor_spimem_check_readop(struct spi_nor *nor,
 	op.cmd.buswidth = spi_nor_get_protocol_inst_nbits(read->proto);
 	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(read->proto);
 	op.data.buswidth = spi_nor_get_protocol_data_nbits(read->proto);
+	op.data.dtr = spi_nor_protocol_is_dtr(read->proto);
 	op.dummy.buswidth = op.addr.buswidth;
 	op.dummy.nbytes = (read->num_mode_clocks + read->num_wait_states) *
 			  op.dummy.buswidth / 8;
+
+	if (op.data.dtr)
+		op.dummy.nbytes *= 2;
 
 	return spi_nor_spimem_check_op(nor, &op);
 }
@@ -3162,6 +3190,7 @@ static int spi_nor_spimem_check_pp(struct spi_nor *nor,
 	op.cmd.buswidth = spi_nor_get_protocol_inst_nbits(pp->proto);
 	op.addr.buswidth = spi_nor_get_protocol_addr_nbits(pp->proto);
 	op.data.buswidth = spi_nor_get_protocol_data_nbits(pp->proto);
+	op.data.dtr = spi_nor_protocol_is_dtr(pp->proto);
 
 	return spi_nor_spimem_check_op(nor, &op);
 }
@@ -3178,9 +3207,6 @@ spi_nor_spimem_adjust_hwcaps(struct spi_nor *nor, u32 *hwcaps)
 {
 	struct spi_nor_flash_parameter *params =  &nor->params;
 	unsigned int cap;
-
-	/* DTR modes are not supported yet, mask them all. */
-	*hwcaps &= ~SNOR_HWCAPS_DTR;
 
 	/* X-X-X modes are not supported yet, mask them all. */
 	*hwcaps &= ~SNOR_HWCAPS_X_X_X;
