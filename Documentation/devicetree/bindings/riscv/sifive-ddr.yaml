@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/riscv/sifive-ddr.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: SiFive DDR memory controller binding
+
+description: |
+  The Sifive DDR controller driver is used to manage the Cadence DDR
+  controller present in SiFive FU540-C000 SoC. Currently the driver is
+  used to manage EDAC feature of the DDR controller.
+
+maintainers:
+  - Yash Shah <yash.shah@sifive.com>
+
+properties:
+  compatible:
+    enum:
+      - sifive,fu540-c000-ddr
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    memory-controller@100b0000 {
+        compatible = "sifive,fu540-c000-ddr";
+        reg = <0x100b0000 0x4000>;
+        interrupts = <31>;
+    };
