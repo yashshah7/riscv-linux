@@ -7,4 +7,10 @@ config SIFIVE_L2
 	help
 	  Support for the L2 cache controller on SiFive platforms.
 
+config SIFIVE_DDR
+	bool "Sifive DDR controller driver"
+	help
+	  Support for the management of cadence DDR controller on SiFive
+	  platforms.
+
 endif
