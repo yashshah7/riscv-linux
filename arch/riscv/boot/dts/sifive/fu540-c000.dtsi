@@ -282,5 +282,12 @@
 			clocks = <&prci PRCI_CLK_TLCLK>;
 			status = "disabled";
 		};
+		ddr: ddr@100b000 {
+			compatible = "sifive,fu540-c000-ddr";
+			interrupt-parent = <&plic0>;
+			interrupts = <31>;
+			reg = <0x0 0x100b0000 0x0 0x4000>;
+			status = "disabled";
+		};
 	};
 };

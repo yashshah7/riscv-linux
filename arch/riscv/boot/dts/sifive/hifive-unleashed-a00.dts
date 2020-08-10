@@ -103,3 +103,7 @@
 &gpio {
 	status = "okay";
 };
+
+&ddr {
+	status = "okay";
+};
