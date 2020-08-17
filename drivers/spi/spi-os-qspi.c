@@ -682,6 +682,64 @@ put_master:
 	return ret;
 }
 
+#ifdef CONFIG_PM
+static int os_qspi_runtime_suspend(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	struct os_qspi *qspi = spi_master_get_devdata(master);
+
+	clk_disable_unprepare(qspi->clk);
+
+	return 0;
+}
+
+static int os_qspi_runtime_resume(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	struct os_qspi *qspi = spi_master_get_devdata(master);
+
+	return clk_prepare_enable(qspi->clk);
+}
+#endif
+
+#ifdef CONFIG_PM_SLEEP
+static int os_qspi_suspend(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	int ret;
+
+	ret = spi_master_suspend(master);
+	if (ret)
+		return ret;
+
+	return pm_runtime_force_suspend(dev);
+}
+
+static int os_qspi_resume(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	struct os_qspi *qspi = spi_master_get_devdata(master);
+	int ret;
+
+	ret = pm_runtime_force_resume(dev);
+	if (ret)
+		return ret;
+
+	ret = spi_master_resume(master);
+	if (ret)
+		clk_disable_unprepare(qspi->clk);
+
+	return ret;
+}
+#endif
+
+static const struct dev_pm_ops os_qspi_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(os_qspi_suspend, os_qspi_resume)
+	SET_RUNTIME_PM_OPS(os_qspi_runtime_suspend,
+			   os_qspi_runtime_resume, NULL)
+};
+
+
 /**
  * os_qspi_remove:	Remove method for the QSPI driver
  * @pdev:	Pointer to the platform_device structure
@@ -714,6 +772,7 @@ static struct platform_driver os_qspi_driver = {
 	.remove = os_qspi_remove,
 	.driver = {
 		.name = OS_QSPI_DRIVER_NAME,
+		.pm = &os_qspi_pm_ops,
 		.of_match_table = os_qspi_of_match,
 	},
 };
