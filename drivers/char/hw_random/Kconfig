@@ -347,6 +347,19 @@ config HW_RANDOM_HISI_V2
 
 	  If unsure, say Y.
 
+config HW_RANDOM_SIFIVE
+	tristate "SiFive True Random Number Generator support"
+	depends on HW_RANDOM
+	default HW_RANDOM && RISCV
+	help
+	  This driver provides kernel-side support for the True Random Number
+	  Generator hardware found on SiFive SoCs.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sifive-trng.
+
+	  If unsure, say Y.
+
 config HW_RANDOM_ST
 	tristate "ST Microelectronics HW Random Number Generator support"
 	depends on HW_RANDOM && ARCH_STI
