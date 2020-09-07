@@ -19,6 +19,17 @@
 	chosen {
 	};
 
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		hart0_mem: hart0@0x90000000 {
+			reg = <0x0 0x90000000 0x0 0x100000>;
+			no-map;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -288,6 +299,19 @@
 			interrupts = <31>;
 			reg = <0x0 0x100b0000 0x0 0x4000>;
 			status = "disabled";
+		};
+		rproc: rproc@0 {
+			compatible = "sifive,e51-rproc";
+			status = "okay";
+			memory-region = <&hart0_mem>;
+		};
+		vring: vring@0 {
+			compatible = "vring_uio";
+			reg = <0x0 0x90020000 0x0 0x40000>;
+		};
+		shm0: shm@0 {
+			compatible = "shm_uio";
+			reg = <0x0 0x90000000 0x0 0x0100000>;
 		};
 	};
 };

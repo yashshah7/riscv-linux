@@ -61,7 +61,7 @@
 };
 
 &qspi0 {
-	status = "okay";
+	status = "disabled";
 	flash@0 {
 		compatible = "issi,is25wp256", "jedec,spi-nor";
 		reg = <0>;
