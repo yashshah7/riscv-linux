@@ -114,7 +114,7 @@
 #define OS_QSPI_DEFAULT_NUM_CS			0x2
 #define OS_QSPI_DEFAULT_DEPTH			32
 
-#define OS_QSPI_MAX_MMAP_SZ                     10000000
+#define OS_QSPI_MAX_MMAP_SZ                     0x10000000
 
 /**
  * struct os_qspi - Defines qspi driver instance
@@ -254,39 +254,25 @@ static irqreturn_t os_qspi_irq(int irq, void *dev_id)
 	struct os_qspi *qspi = (struct os_qspi *)dev_id;
 	u32 sr;
 
-	sr = os_qspi_read(qspi,OS_QSPI_INTR_STAT_REG);
-	if ((sr & OS_QSPI_INT_MASK_APB_RX) ||
-	    (sr & OS_QSPI_INT_MASK_APB_TX)) {
-		sr = os_qspi_read(qspi, OS_QSPI_INT_MASK_CLR);
-		sr |= 0x01;
-		os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, sr);
-	}
 	complete(&qspi->done);
+	sr = os_qspi_read(qspi, OS_QSPI_INT_MASK_CLR);
+	sr |= 0x01;
+	os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, sr);
 	return IRQ_HANDLED;
 }
 
 static int os_qspi_mmap_read(struct os_qspi *qspi, const struct spi_mem_op *op)
 {
-	u32 tmp, sr;
-
 	if (op->data.dir == SPI_MEM_DATA_IN) {
 		memcpy_fromio(op->data.buf.in, qspi->mm_base + op->addr.val,
 			      op->data.nbytes);
 	} else {
+		reinit_completion(&qspi->done);
 		memcpy_toio(qspi->mm_base + op->addr.val, op->data.buf.out,
 			    op->data.nbytes);
-		/* TODO make use of os_qspi_wait() instead of manual polling */
-		if (readl_relaxed_poll_timeout_atomic(qspi->regs +
-						      OS_QSPI_INTR_STAT_REG, sr,
-						      (sr &
-						      OS_QSPI_INT_MASK_BURST),
-						      1, 1000))
+		if (!wait_for_completion_timeout(&qspi->done, msecs_to_jiffies(1000)))
 			printk(KERN_ERR "OS_QSPI: AXI write timeout\n");
-
 		os_qspi_write(qspi, OS_QSPI_BURST_CTRL_REG, 0x01);
-		tmp = os_qspi_read(qspi, OS_QSPI_INT_MASK_CLR);
-		tmp |= 0x01;
-		os_qspi_write(qspi, OS_QSPI_INT_MASK_CLR, tmp);
 	}
 
 	return 0;
