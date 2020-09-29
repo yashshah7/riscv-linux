@@ -139,6 +139,7 @@ struct sifive_hca_dev {
 	const struct sifive_hca_algs *algs;
 	void __iomem *regs;
 	struct device *dev;
+	struct completion dma_completion;
 	unsigned int irq;
 	spinlock_t lock;
 };
