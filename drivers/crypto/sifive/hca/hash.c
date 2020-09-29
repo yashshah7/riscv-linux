@@ -108,27 +108,12 @@ struct ahash_alg *hca_ahash_algs[] = {
 /* Register algs to crypto framework */
 int sifive_ahash_algs_register(struct sifive_hca_dev *hca)
 {
-	int i, j, ret;
-
-	for (i = 0; i < hca->algs->nahash_algs; i++) {
-		ret = crypto_register_ahash(hca->algs->ahash_algs[i]);
-		if (ret)
-			goto err_unregister_ahash;
-	}
-
-	return 0;
-
-err_unregister_ahash:
-	for (j = 0; j < i; j++)
-		crypto_unregister_ahash(hca->algs->ahash_algs[j]);
-
-	return ret;
+	return crypto_register_ahashes(hca->algs->ahash_algs,
+				       ARRAY_SIZE(hca->algs->ahash_algs));
 }
 
 void sifive_ahash_algs_unregister(struct sifive_hca_dev *hca)
 {
-	int i;
-
-	for (i = 0; i < hca->algs->ncipher_algs; i++)
-		crypto_unregister_skcipher(hca->algs->cipher_algs[i]);
+	crypto_unregister_ahashes(hca->algs->ahash_algs,
+				  ARRAY_SIZE(hca->algs->ahash_algs));
 }
