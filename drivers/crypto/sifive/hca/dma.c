@@ -12,9 +12,7 @@
 
 int sifive_hca_dma_int_handle(struct sifive_hca_dev *hca)
 {
-	struct *dev = hca->dev;
-
-	complete(&dev->dma_completion);
+	complete(&hca->dma_completion);
 	sifive_hca_dma_int_ack(hca);
 
 	return 0;
@@ -84,10 +82,8 @@ int sifive_hca_dma_transfer(struct sifive_hca_dev *hca, uint32_t src,
 /* HCA embedded DMA initialization */
 int sifive_hca_dma_init(struct sifive_hca_dev *hca)
 {
-	struct *dev = hca->dev;
-
 	sifive_hca_dma_int_enable(hca);
-	init_completion(&dev->dma_completion);
+	init_completion(&hca->dma_completion);
 
 	return 0;
 }
