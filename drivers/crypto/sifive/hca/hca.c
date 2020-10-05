@@ -53,6 +53,18 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 /* Initialize hardware crypto accelerator */
 static int sifive_hca_init(const struct device *dev, struct sifive_hca_dev *hca)
 {
+	uint32_t ret;
+
+	ret = sifive_hca_get_rev(hca, 0);
+	if (!ret) {
+		dev_err(dev, "HCA revision error\n");
+		return -ENODEV;
+	}
+
+	sifive_hca_crypto_int_disable(hca);
+	sifive_hca_ofifo_int_disable(hca);
+	sifive_hca_dma_int_disable(hca);
+
 	return 0;
 }
 

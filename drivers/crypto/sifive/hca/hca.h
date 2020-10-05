@@ -295,6 +295,21 @@ static inline void sifive_hca_dma_set_dest(struct sifive_hca_dev *hca, uint32_t 
 	writel(addr, hca->regs + HCA_DMA_DEST);
 }
 
+static inline uint32_t sifive_hca_get_rev(struct sifive_hca_dev *hca, uint32_t mask)
+{
+	return (readl(hca->regs + HCA_REV) & mask);
+}
+
+static inline uint32_t sifive_hca_get_aes_rev(struct sifive_hca_dev *hca, uint32_t mask)
+{
+	return (readl(hca->regs + HCA_AES_REV) & mask);
+}
+
+static inline uint32_t sifive_hca_get_sha_rev(struct sifive_hca_dev *hca, uint32_t mask)
+{
+	return (readl(hca->regs + HCA_SHA_REV) & mask);
+}
+
 //extern struct skcipher_alg sifive_hca_cbc_aes_alg;
 extern struct ahash_alg sifive_hca_sha512_alg;
 
