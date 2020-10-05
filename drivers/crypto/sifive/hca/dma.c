@@ -83,6 +83,9 @@ int sifive_hca_dma_transfer(struct sifive_hca_dev *hca, uint32_t src,
 int sifive_hca_dma_init(struct sifive_hca_dev *hca)
 {
 	sifive_hca_dma_int_enable(hca);
+	sifive_hca_dma_set_src(hca, 0);
+	sifive_hca_dma_set_dest(hca, 0);
+	sifive_hca_dma_set_length(hca, 0);
 	init_completion(&hca->dma_completion);
 
 	return 0;
@@ -91,6 +94,9 @@ int sifive_hca_dma_init(struct sifive_hca_dev *hca)
 int sifive_hca_dma_free(struct sifive_hca_dev *hca)
 {
 	sifive_hca_dma_int_disable(hca);
+	sifive_hca_dma_set_src(hca, 0);
+	sifive_hca_dma_set_dest(hca, 0);
+	sifive_hca_dma_set_length(hca, 0);
 
 	return 0;
 }
