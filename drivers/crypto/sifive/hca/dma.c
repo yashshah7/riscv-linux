@@ -51,6 +51,13 @@ int sifive_hca_dma_transfer(struct sifive_hca_dev *hca, uint32_t src,
 		return -EBUSY;
 	}
 
+	/*
+	 * FIXME: In the current release, the input FIFO doesn't block the bus
+	 * when full. It is the user responsability to check if the Input FIFO
+	 * is not full before writing more data with the help of CR.IFIFOFULL
+	 * and CR.IFIFOCNT.
+	 */
+
 	/* SHA digest will be stored in HASH register, not DMA_DEST */
 	if (dest)
 		sifive_hca_dma_set_dest(hca, dest);
