@@ -23,8 +23,10 @@ static void sifive_hca_ahash_cra_exit(struct crypto_tfm *tfm)
 	__asm__ ("");
 }
 
-static int sifive_hca_sha2_init(struct ahash_request *req)
+static int sifive_hca_ahash_init(struct ahash_request *req)
 {
+	//struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
+
 	return 0;
 }
 
@@ -43,17 +45,17 @@ static int sifive_hca_ahash_finup(struct ahash_request *req)
 	return 0;
 }
 
-static int sifive_hca_sha2_disgest(struct ahash_request *req)
+static int sifive_hca_ahash_disgest(struct ahash_request *req)
 {
 	return 0;
 }
 
-static int sifive_hca_sha2_export(struct ahash_request *req, void *out)
+static int sifive_hca_ahash_export(struct ahash_request *req, void *out)
 {
 	return 0;
 }
 
-static int sifive_hca_sha2_import(struct ahash_request *req, const void *in)
+static int sifive_hca_ahash_import(struct ahash_request *req, const void *in)
 {
 	return 0;
 }
@@ -71,13 +73,13 @@ struct ahash_alg sifive_hca_sha384_alg = {
 };
 #endif
 struct ahash_alg sifive_hca_sha512_alg = {
-	.init = sifive_hca_sha2_init,
+	.init = sifive_hca_ahash_init,
 	.update = sifive_hca_ahash_update,
 	.final = sifive_hca_ahash_final,
 	.finup = sifive_hca_ahash_finup,
-	.digest = sifive_hca_sha2_disgest,
-	.export = sifive_hca_sha2_export,
-	.import = sifive_hca_sha2_import,
+	.digest = sifive_hca_ahash_disgest,
+	.export = sifive_hca_ahash_export,
+	.import = sifive_hca_ahash_import,
 	.halg = {
 		.digestsize = SHA512_DIGEST_SIZE,
 		.statesize = sizeof(struct sha512_state),
@@ -108,12 +110,12 @@ struct ahash_alg *hca_ahash_algs[] = {
 /* Register algs to crypto framework */
 int sifive_ahash_algs_register(struct sifive_hca_dev *hca)
 {
-	return crypto_register_ahashes(hca->algs->ahash_algs,
-				       ARRAY_SIZE(hca->algs->ahash_algs));
+	return crypto_register_ahashes(*(hca->algs->ahash_algs), hca->algs->nahash_algs);
+//				       ARRAY_SIZE(*(hca->algs->ahash_algs)));
 }
 
 void sifive_ahash_algs_unregister(struct sifive_hca_dev *hca)
 {
-	crypto_unregister_ahashes(hca->algs->ahash_algs,
-				  ARRAY_SIZE(hca->algs->ahash_algs));
+	crypto_unregister_ahashes(*(hca->algs->ahash_algs), hca->algs->nahash_algs);
+//				  ARRAY_SIZE(*(hca->algs->ahash_algs)));
 }
