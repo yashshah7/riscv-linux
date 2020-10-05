@@ -155,6 +155,11 @@ static inline void _hca_writel(struct sifive_hca_dev *hca, uint32_t offset, uint
 	spin_unlock(&hca->lock);
 }
 
+static inline uint8_t sifive_hca_get_fifo_target(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_IFIFOTGT);
+}
+
 static inline void sifive_hca_fifo_target_aes(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_IFIFOTGT, 0);
@@ -210,6 +215,11 @@ static inline void sifive_hca_crypto_int_ack(struct sifive_hca_dev *hca)
 	_hca_writel(hca, HCA_CR, HCA_CR_CRYPTODIS, 1);
 }
 
+static inline uint32_t sifive_hca_crypto_int_status(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_CRYPTODIS);
+}
+
 static inline void sifive_hca_ofifo_int_enable(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_OFIFOIE, 1);
@@ -225,6 +235,11 @@ static inline void sifive_hca_ofifo_int_ack(struct sifive_hca_dev *hca)
 	_hca_writel(hca, HCA_CR, HCA_CR_OFIFOIS, 1);
 }
 
+static inline uint32_t sifive_hca_ofifo_int_status(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_OFIFOIS);
+}
+
 static inline void sifive_hca_dma_int_enable(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_DMADIE, 1);
@@ -238,6 +253,11 @@ static inline void sifive_hca_dma_int_disable(struct sifive_hca_dev *hca)
 static inline void sifive_hca_dma_int_ack(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_DMADIS, 1);
+}
+
+static inline uint32_t sifive_hca_dma_int_status(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_DMADIS);
 }
 
 static inline uint8_t sifive_hca_num_ififo(struct sifive_hca_dev *hca)

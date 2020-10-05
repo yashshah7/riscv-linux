@@ -47,6 +47,19 @@ static const struct sifive_hca_algs general_hca_algs = {
 /* HCA driver interrupt handler */
 static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 {
+	struct sifive_hca_dev *hca = dev_id;
+
+	switch (sifive_hca_get_fifo_target(hca)) {
+		case HCA_CR_IFIFOTGT_AES:
+			/* AES handler */
+			break;
+		case HCA_CR_IFIFOTGT_SHA:
+			/* SHA handler */
+			break;
+		default:
+			return -EINVAL;
+	}
+
 	return 0;
 }
 
