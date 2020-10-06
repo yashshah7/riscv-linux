@@ -197,6 +197,9 @@ static int sifive_hca_remove(struct platform_device *pdev)
 
 	sifive_hca_remove_algs(hca);
 	sifive_hca_dma_free(hca);
+	sifive_hca_crypto_int_disable(hca);
+	sifive_hca_ofifo_int_disable(hca);
+	sifive_hca_dma_int_disable(hca);
 	free_irq(hca->irq, hca);
 
 	return 0;
