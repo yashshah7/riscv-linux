@@ -44,6 +44,42 @@ static const struct sifive_hca_algs general_hca_algs = {
 	.has_dma = true,
 };
 
+static void sifive_hca_dequeue_req(void)
+{
+	struct crypto_async_request *req = NULL, *backlog = NULL;
+	struct sifive_hca_ctx *ctx;
+
+	spin_lock_bh(&hca_dev->lock);
+	backlog = crypto_get_backlog(&hca_dev->queue);
+	req = crypto_dequeue_request(&hca_dev->queue);
+	spin_unlock_bh(&hca_dev->lock);
+
+	if (!req)
+		return;
+
+	if (backlog)
+		backlog->complete(backlog, -EINPROGRESS);
+
+	ctx = crypto_tfm_ctx(req->tfm);
+	ctx->ops->crypt(req);
+}
+
+int sifive_hca_queue_req(struct crypto_async_request *req)
+{
+	int ret;
+
+	spin_lock_bh(&hca_dev->lock);
+	ret = crypto_enqueue_request(&hca_dev->queue, req);
+	spin_unlock_bh(&hca_dev->lock);
+
+	if (ret != -EINPROGRESS)
+		return ret;
+
+	sifive_hca_dequeue_req();
+
+	return -EINPROGRESS;
+}
+
 /* HCA driver interrupt handler */
 static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 {

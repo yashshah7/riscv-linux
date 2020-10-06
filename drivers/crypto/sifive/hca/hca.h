@@ -140,8 +140,18 @@ struct sifive_hca_dev {
 	void __iomem *regs;
 	struct device *dev;
 	struct completion dma_completion;
+	struct crypto_queue queue;
 	unsigned int irq;
 	spinlock_t lock;
+};
+
+struct sifive_hca_req_ops {
+	void (*crypt)(struct crypto_async_request *req);
+	void (*cleanup)(struct crypto_async_request *req);
+};
+
+struct sifive_hca_ctx {
+	const struct sifive_hca_req_ops *ops;
 };
 
 /* HCA controls  */
@@ -333,6 +343,7 @@ static inline uint32_t sifive_hca_get_sha_rev(struct sifive_hca_dev *hca, uint32
 //extern struct skcipher_alg sifive_hca_cbc_aes_alg;
 extern struct ahash_alg sifive_hca_sha512_alg;
 
+int sifive_hca_queue_req(struct crypto_async_request *req);
 int sifive_aes_algs_register(struct sifive_hca_dev *hca);
 //void sifive_aes_algs_unregister(struct sifive_hca_dev *hca);
 
