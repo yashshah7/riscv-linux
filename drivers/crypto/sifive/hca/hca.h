@@ -6,6 +6,7 @@
 #include <crypto/hash.h>
 #include <crypto/internal/hash.h>
 #include <crypto/internal/skcipher.h>
+#include <linux/bitfield.h>
 
 #define HCA_CR			0x00
 #define HCA_CR_IFIFOTGT		BIT(0)
@@ -340,6 +341,94 @@ static inline uint32_t sifive_hca_get_sha_rev(struct sifive_hca_dev *hca, uint32
 	return (readl(hca->regs + HCA_SHA_REV) & mask);
 }
 
+static inline int sifive_hca_aes_set_key(struct sifive_hca_dev *hca, int len, u32 *key)
+{
+	int i, offset = 0x1c;
+
+	if (len > 32)
+		return -EINVAL;
+
+	spin_lock(&hca->lock);
+	for (i = 0; i < (len / 4); i++)
+	{
+		writel(cpu_to_le32(key[i]), hca->regs + HCA_AES_KEY + offset);
+		offset = offset - 4;
+	}
+	spin_unlock(&hca->lock);
+
+	return 0;
+}
+
+static inline int sifive_hca_aes_set_initv(struct sifive_hca_dev *hca, int len, u32 *val)
+{
+	int i, offset = 0x0c;
+
+	if (len > 16)
+		return -EINVAL;
+
+	spin_lock(&hca->lock);
+	for (i = 0; i < (len / 4); i++)
+	{
+		writel(cpu_to_le32(val[i]), hca->regs + HCA_AES_INITV + offset);
+		offset = offset - 4;
+	}
+	spin_unlock(&hca->lock);
+
+	return 0;
+}
+
+static inline void sifive_hca_aes_set_mode(struct sifive_hca_dev *hca, u8 mode)
+{
+	_hca_writel(hca, HCA_AES_CR, FIELD_PREP(HCA_AES_CR_MODE, mode), 1);
+}
+
+static inline void sifive_hca_aes_set_keysize(struct sifive_hca_dev *hca, u8 size)
+{
+	u8 len;
+	if (size == 16)
+		len = FIELD_PREP(HCA_AES_CR_KEYSZ, HCA_AES_CR_KEYSZ_128);
+	else if (size == 24)
+		len = FIELD_PREP(HCA_AES_CR_KEYSZ, HCA_AES_CR_KEYSZ_192);
+	else if (size == 32)
+		len = FIELD_PREP(HCA_AES_CR_KEYSZ, HCA_AES_CR_KEYSZ_256);
+
+	_hca_writel(hca, HCA_AES_CR, len, 1);
+}
+
+static inline void sifive_hca_aes_set_process_type(struct sifive_hca_dev *hca, u8 type)
+{
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_PROCESS, type);
+}
+
+/*
+ * Helper function that indicates whether a crypto request needs to be
+ * cleaned up or not after being enqueued using sifive_hca_queue_req().
+ */
+static inline int sifive_hca_req_needs_cleanup(struct crypto_async_request *req,
+		int ret)
+{
+	/*
+	 * The queue still had some space, the request was queued
+	 * normally, so there's no need to clean it up.
+	 */
+	if (ret == -EINPROGRESS)
+		return false;
+
+	/*
+	 * The queue had not space left, but since the request is
+	 * flagged with CRYPTO_TFM_REQ_MAY_BACKLOG, it was added to
+	 * the backlog and will be processed later. There's no need to
+	 * clean it up.
+	 */
+	if (ret == -EBUSY)
+		return false;
+
+	/* Request wasn't queued, we need to clean it up */
+	return true;
+}
+
+extern struct sifive_hca_dev *hca_dev;
+
 //extern struct skcipher_alg sifive_hca_cbc_aes_alg;
 extern struct ahash_alg sifive_hca_sha512_alg;
 
@@ -352,5 +441,8 @@ void sifive_ahash_algs_unregister(struct sifive_hca_dev *hca);
 
 int sifive_hca_dma_init(struct sifive_hca_dev *hca);
 int sifive_hca_dma_free(struct sifive_hca_dev *hca);
+int sifive_hca_dma_int_handle(struct sifive_hca_dev *hca);
+int sifive_hca_dma_transfer(struct sifive_hca_dev *hca, uint32_t src,
+			    uint32_t dest, uint32_t len);
 
 #endif /* _ASM_SIFIVE_HCA_H */

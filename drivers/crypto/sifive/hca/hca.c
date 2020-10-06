@@ -96,6 +96,9 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 			return -EINVAL;
 	}
 
+	if (sifive_hca_dma_int_status(hca))
+		sifive_hca_dma_int_handle(hca);
+
 	return 0;
 }
 
