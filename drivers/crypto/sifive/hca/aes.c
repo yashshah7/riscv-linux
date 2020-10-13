@@ -10,9 +10,11 @@
 
 #include "hca.h"
 
-#define SIFIVE_HCA_AES_DIR_ENC 0
-#define SIFIVE_HCA_AES_DIR_DEC 1
-#define SIFIVE_HCA_AES_INITV_SIZE AES_BLOCK_SIZE
+#define SIFIVE_HCA_AES_INITV_SIZE	AES_BLOCK_SIZE
+#define SIFIVE_HCA_AES_FIFO_SIZE	32
+#define SIFIVE_HCA_AES_DIR_ENC		0
+#define SIFIVE_HCA_AES_DIR_DEC		1
+#define SIFIVE_HCA_AES_TIMEOUT		3000000 /* in usecs */
 
 struct sifive_hca_aes_ctx {
 	struct sifive_hca_ctx base;
@@ -50,17 +52,80 @@ static inline void sifive_hca_skcipher_cleanup(struct skcipher_request *req)
 	sifive_hca_skcipher_dma_cleanup(req);
 }
 
-static void sifive_hca_skcipher_crypt(struct crypto_async_request *req)
+static void sifive_hca_skcipher_std_crypt(struct skcipher_request *skreq)
 {
-	struct skcipher_request *skreq = skcipher_request_cast(req);
 	struct sifive_hca_op_ctx *tmpl = skcipher_request_ctx(skreq);
+	unsigned int offset = 0;
+	uint8_t buf[32];
+	size_t len;
+
+	while (offset < skreq->cryptlen)
+	{
+		len = min_t(size_t, skreq->cryptlen - offset,
+			    SIFIVE_HCA_AES_FIFO_SIZE);
+
+		len = sg_pcopy_to_buffer(skreq->src, tmpl->src_nents, buf,
+					  len, offset);
+
+		reinit_completion(&hca_dev->aes_completion);
+
+		if (sifive_hca_ififo_is_full(hca_dev))
+			break; /* FIXME: Check what to do when FIFO is full */
+		else
+			sifive_hca_aes_fifo_push(hca_dev, buf, len);
+
+		if (sifive_hca_crypto_is_int_enable(hca_dev))
+			wait_for_completion(&hca_dev->aes_completion);
+		else
+			sifive_hca_poll_aes_timeout(hca_dev,
+						    SIFIVE_HCA_AES_TIMEOUT);
+		if (sifive_hca_ofifo_is_empty(hca_dev))
+			break; /*FIXME: Check what to do here */
+		else
+			sifive_hca_aes_fifo_pop(hca_dev, buf, len);
+
+		len = sg_pcopy_from_buffer(skreq->dst, tmpl->dst_nents, buf,
+					   len, offset);
+		offset += len;
+	}
+}
+
+static void sifive_hca_skcipher_dma_crypt(struct skcipher_request *skreq)
+{
 	struct scatterlist *sg_src = skreq->src, *sg_dst = skreq->dst;
 	dma_addr_t src, dst;
 	u32 len, ret;
 
+	while (sg_src != NULL && sg_dst != NULL) {
+		src = sg_dma_address(sg_src);
+		dst = sg_dma_address(sg_dst);
+		len = sg_dma_len(sg_src);
+
+		reinit_completion(&hca_dev->dma_completion);
+		ret = sifive_hca_dma_transfer(hca_dev, src, dst, len);
+		if (ret < 0)
+			break;
+
+		if (sifive_hca_dma_is_int_enable(hca_dev))
+			wait_for_completion(&hca_dev->dma_completion);
+		else
+			sifive_hca_poll_aes_timeout(hca_dev,
+						    SIFIVE_HCA_AES_TIMEOUT);
+
+		sg_src = sg_next(sg_src);
+		sg_dst = sg_next(sg_dst);
+	}
+}
+
+static void sifive_hca_skcipher_crypt(struct crypto_async_request *req)
+{
+	struct skcipher_request *skreq = skcipher_request_cast(req);
+	struct sifive_hca_op_ctx *tmpl = skcipher_request_ctx(skreq);
+	u8 mode = tmpl->aes_mode;
+
 	sifive_hca_fifo_target_aes(hca_dev);
 
-	sifive_hca_aes_set_mode(hca_dev, tmpl->aes_mode);
+	sifive_hca_aes_set_mode(hca_dev, mode);
 	sifive_hca_aes_set_keysize(hca_dev, tmpl->aes_key_size);
 	sifive_hca_aes_set_process_type(hca_dev, tmpl->aes_process_type);
 
@@ -68,19 +133,14 @@ static void sifive_hca_skcipher_crypt(struct crypto_async_request *req)
 	sifive_hca_aes_set_initv(hca_dev, SIFIVE_HCA_AES_INITV_SIZE,
 				 &tmpl->aes_initv[0]);
 
-	while (sg_src != NULL && sg_dst != NULL) {
-		src = sg_dma_address(sg_src);
-		dst = sg_dma_address(sg_dst);
-		len = sg_dma_len(sg_src);
+	if (mode == HCA_AES_CR_MODE_CBC || mode == HCA_AES_CR_MODE_CFB ||
+	    mode == HCA_AES_CR_MODE_OFB || mode == HCA_AES_CR_MODE_CTR)
+		sifive_hca_aes_set_init(hca_dev);
 
-		ret = sifive_hca_dma_transfer(hca_dev, src, dst, len);
-		if (!ret)
-			wait_for_completion(&hca_dev->dma_completion);
-		else
-			break;
-		sg_src = sg_next(sg_src);
-		sg_dst = sg_next(sg_dst);
-	}
+	if (hca_dev->algs->has_dma)
+		sifive_hca_skcipher_dma_crypt(skreq);
+	else
+		sifive_hca_skcipher_std_crypt(skreq);
 }
 
 static inline void
@@ -174,7 +234,7 @@ static int sifive_hca_skcipher_req_init(struct skcipher_request *req,
 {
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
 	unsigned int blksize = crypto_skcipher_blocksize(tfm);
-	int ret;
+	int ret = 0;
 
 	if (!IS_ALIGNED(req->cryptlen, blksize))
 		return -EINVAL;
@@ -190,7 +250,8 @@ static int sifive_hca_skcipher_req_init(struct skcipher_request *req,
 		return tmpl->dst_nents;
 	}
 
-	ret = sifive_hca_skcipher_dma_req_init(req, tmpl);
+	if (hca_dev->algs->has_dma)
+		ret = sifive_hca_skcipher_dma_req_init(req, tmpl);
 
 	return ret;
 }

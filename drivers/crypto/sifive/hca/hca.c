@@ -85,9 +85,16 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 {
 	struct sifive_hca_dev *hca = dev_id;
 
+	if (sifive_hca_dma_int_status(hca))
+		sifive_hca_dma_int_handle(hca);
+
 	switch (sifive_hca_get_fifo_target(hca)) {
 		case HCA_CR_IFIFOTGT_AES:
 			/* AES handler */
+			if (sifive_hca_crypto_int_status(hca)) {
+				complete(&hca->aes_completion);
+				sifive_hca_crypto_int_ack(hca);
+			}
 			break;
 		case HCA_CR_IFIFOTGT_SHA:
 			/* SHA handler */
@@ -95,9 +102,6 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 		default:
 			return -EINVAL;
 	}
-
-	if (sifive_hca_dma_int_status(hca))
-		sifive_hca_dma_int_handle(hca);
 
 	return 0;
 }
@@ -116,6 +120,7 @@ static int sifive_hca_init(const struct device *dev, struct sifive_hca_dev *hca)
 	sifive_hca_crypto_int_disable(hca);
 	sifive_hca_ofifo_int_disable(hca);
 	sifive_hca_dma_int_disable(hca);
+	init_completion(&hca->aes_completion);
 
 	return 0;
 }

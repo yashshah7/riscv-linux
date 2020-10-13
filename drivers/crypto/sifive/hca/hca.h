@@ -7,6 +7,7 @@
 #include <crypto/internal/hash.h>
 #include <crypto/internal/skcipher.h>
 #include <linux/bitfield.h>
+#include <linux/iopoll.h>
 
 #define HCA_CR			0x00
 #define HCA_CR_IFIFOTGT		BIT(0)
@@ -141,6 +142,7 @@ struct sifive_hca_dev {
 	void __iomem *regs;
 	struct device *dev;
 	struct completion dma_completion;
+	struct completion aes_completion;
 	struct crypto_queue queue;
 	unsigned int irq;
 	spinlock_t lock;
@@ -216,6 +218,11 @@ static inline void sifive_hca_crypto_int_enable(struct sifive_hca_dev *hca)
 	_hca_writel(hca, HCA_CR, HCA_CR_CRYPTODIE, 1);
 }
 
+static inline int sifive_hca_crypto_is_int_enable(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_CRYPTODIE);
+}
+
 static inline void sifive_hca_crypto_int_disable(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_CRYPTODIE, 0);
@@ -254,6 +261,11 @@ static inline uint32_t sifive_hca_ofifo_int_status(struct sifive_hca_dev *hca)
 static inline void sifive_hca_dma_int_enable(struct sifive_hca_dev *hca)
 {
 	_hca_writel(hca, HCA_CR, HCA_CR_DMADIE, 1);
+}
+
+static inline int sifive_hca_dma_is_int_enable(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_CR) & HCA_CR_DMADIE);
 }
 
 static inline void sifive_hca_dma_int_disable(struct sifive_hca_dev *hca)
@@ -377,6 +389,78 @@ static inline int sifive_hca_aes_set_initv(struct sifive_hca_dev *hca, int len, 
 	return 0;
 }
 
+static inline void sifive_hca_aes_fifo_push(struct sifive_hca_dev *hca, const uint8_t *src, size_t len)
+{
+	const uint8_t *end = src + len;
+
+	while (src < end)
+	{
+		if ( !(((uintptr_t)src) & (sizeof(uint64_t)-1u)) &&
+		    (len >= sizeof(uint64_t))) {
+			writeq(*(const uint64_t *)src, hca->regs + HCA_FIFO_IN);
+			src += sizeof(uint64_t);
+			len -= sizeof(uint64_t);
+			continue;
+		}
+		if ( !(((uintptr_t)src) & (sizeof(uint32_t)-1u)) &&
+		    (len >= sizeof(uint32_t))) {
+			writel(*(const uint32_t *)src, hca->regs + HCA_FIFO_IN);
+			src += sizeof(uint32_t);
+			len -= sizeof(uint32_t);
+			continue;
+		}
+		if ( !(((uintptr_t)src) & (sizeof(uint16_t)-1u)) &&
+		    (len >= sizeof(uint16_t))) {
+			writew(*(const uint16_t *)src, hca->regs + HCA_FIFO_IN);
+			src += sizeof(uint16_t);
+			len -= sizeof(uint16_t);
+			continue;
+		}
+		if ( !(((uintptr_t)src) & (sizeof(uint8_t)-1u))) {
+			writeb(*(const uint8_t *)src, hca->regs + HCA_FIFO_IN);
+			src += sizeof(uint8_t);
+			len -= sizeof(uint8_t);
+			continue;
+		}
+	}
+}
+
+static inline void sifive_hca_aes_fifo_pop(struct sifive_hca_dev *hca, uint8_t *dst, size_t len)
+{
+	const uint8_t *end = dst + len;
+
+	while (dst < end)
+	{
+		if ( !(((uintptr_t)dst) & (sizeof(uint64_t)-1u)) &&
+		     (len >= sizeof(uint64_t))) {
+			*(uint64_t *)dst = readq(hca->regs + HCA_AES_OUT);
+			dst += sizeof(uint64_t);
+			len -= sizeof(uint64_t);
+			continue;
+		}
+		if ( !(((uintptr_t)dst) & (sizeof(uint32_t)-1u)) &&
+		    (len >= sizeof(uint32_t))) {
+			*(uint32_t *)dst = readl(hca->regs + HCA_AES_OUT);
+			dst += sizeof(uint32_t);
+			len -= sizeof(uint32_t);
+			continue;
+		}
+		if ( !(((uintptr_t)dst) & (sizeof(uint16_t)-1u)) &&
+		     (len >= sizeof(uint16_t))) {
+			*(uint16_t *)dst = readw(hca->regs + HCA_AES_OUT);
+			dst += sizeof(uint16_t);
+			len -= sizeof(uint16_t);
+			continue;
+		}
+		if ( !(((uintptr_t)dst) & (sizeof(uint8_t)-1u))) {
+			*(uint8_t *)dst = readb(hca->regs + HCA_AES_OUT);
+			dst += sizeof(uint8_t);
+			len -= sizeof(uint8_t);
+			continue;
+		}
+	}
+}
+
 static inline void sifive_hca_aes_set_mode(struct sifive_hca_dev *hca, u8 mode)
 {
 	_hca_writel(hca, HCA_AES_CR, FIELD_PREP(HCA_AES_CR_MODE, mode), 1);
@@ -398,6 +482,25 @@ static inline void sifive_hca_aes_set_keysize(struct sifive_hca_dev *hca, u8 siz
 static inline void sifive_hca_aes_set_process_type(struct sifive_hca_dev *hca, u8 type)
 {
 	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_PROCESS, type);
+}
+
+static inline void sifive_hca_aes_set_init(struct sifive_hca_dev *hca)
+{
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_INIT, 1);
+}
+
+static inline int sifive_hca_aes_is_busy(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_AES_CR) & HCA_AES_CR_BUSY);
+}
+
+static inline int sifive_hca_poll_aes_timeout(struct sifive_hca_dev *hca,
+					      u64 timeout_us)
+{
+	u32 status;
+
+	return readl_poll_timeout(hca->regs + HCA_AES_CR, status,
+				  !(status & HCA_AES_CR_BUSY), 10, timeout_us);
 }
 
 /*
