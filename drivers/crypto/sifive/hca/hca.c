@@ -238,7 +238,6 @@ err_alg:
 err_dma:
 	sifive_hca_dma_free(hca);
 err_exit:
-	free_irq(hca->irq, hca);
 
 	return ret;
 }
