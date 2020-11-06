@@ -204,6 +204,8 @@ static int sifive_hca_probe(struct platform_device *pdev)
 
 	hca->dev = &pdev->dev;
 
+	spin_lock_init(&hca->lock);
+
 	/* Initialize the embedded DMA */
 	ret = sifive_hca_dma_init(hca);
 	if (ret) {
@@ -228,8 +230,6 @@ static int sifive_hca_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, hca);
 
 	hca_dev = hca;
-
-	spin_lock_init(&hca->lock);
 
 	return 0;
 
