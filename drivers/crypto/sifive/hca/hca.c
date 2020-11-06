@@ -117,6 +117,14 @@ static int sifive_hca_init(const struct device *dev, struct sifive_hca_dev *hca)
 		return -ENODEV;
 	}
 
+	if (hca->algs->ahash_algs) {
+		ret = sifive_hca_get_sha_rev(hca, 0);
+		if (!ret) {
+			dev_err(dev, "SHA revision error\n");
+			return -ENODEV;
+		}
+	}
+
 	sifive_hca_crypto_int_disable(hca);
 	sifive_hca_ofifo_int_disable(hca);
 	sifive_hca_dma_int_disable(hca);
