@@ -263,7 +263,7 @@ static int sifive_hca_remove(struct platform_device *pdev)
  * sifive,<chip>-hca-<version> for the HCA as integrated on a particular chip
  */
 static const struct of_device_id sifive_hca_of_match[] = {
-	{ .compatible = "sifive,hca-0.3.0", .data = &general_hca_algs },
+	{ .compatible = "sifive,hca-0.5", .data = &general_hca_algs },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sifive_hca_of_match);
