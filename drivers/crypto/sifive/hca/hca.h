@@ -340,17 +340,32 @@ static inline void sifive_hca_dma_set_dest(struct sifive_hca_dev *hca, uint32_t 
 
 static inline uint32_t sifive_hca_get_rev(struct sifive_hca_dev *hca, uint32_t mask)
 {
-	return (readl(hca->regs + HCA_REV) & mask);
+	uint32_t val = readl(hca->regs + HCA_REV);
+
+	if (mask)
+		return (val & mask);
+	else
+		return val;
 }
 
 static inline uint32_t sifive_hca_get_aes_rev(struct sifive_hca_dev *hca, uint32_t mask)
 {
-	return (readl(hca->regs + HCA_AES_REV) & mask);
+	uint32_t val = readl(hca->regs + HCA_AES_REV);
+
+	if (mask)
+		return (val & mask);
+	else
+		return val;
 }
 
 static inline uint32_t sifive_hca_get_sha_rev(struct sifive_hca_dev *hca, uint32_t mask)
 {
-	return (readl(hca->regs + HCA_SHA_REV) & mask);
+	uint32_t val = readl(hca->regs + HCA_SHA_REV);
+
+	if (mask)
+		return (val & mask);
+	else
+		return val;
 }
 
 static inline int sifive_hca_aes_set_key(struct sifive_hca_dev *hca, int len, u32 *key)
