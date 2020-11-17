@@ -12,6 +12,8 @@
 
 #include "hca.h"
 
+#define HCA_CRYPTO_DEFAULT_MAX_QLEN	128
+
 struct sifive_hca_dev *hca_dev;
 
 /*
@@ -228,6 +230,8 @@ static int sifive_hca_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, hca);
+
+	crypto_init_queue(&hca->queue, HCA_CRYPTO_DEFAULT_MAX_QLEN);
 
 	hca_dev = hca;
 
