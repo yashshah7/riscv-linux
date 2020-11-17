@@ -75,13 +75,13 @@
 #define HCA_AES_INITV		0x50
 
 #define HCA_SHA_CR		0x60
-#define HCA_SHA_MODE		GENMASK(1, 0)
+#define HCA_SHA_CR_MODE		GENMASK(1, 0)
 #define HCA_SHA_MODE_224	0x0
 #define HCA_SHA_MODE_256	0x1
 #define HCA_SHA_MODE_384	0x2
 #define HCA_SHA_MODE_512	0x3
-#define HCA_SHA_INIT		BIT(2)
-#define HCA_SHA_BUSY		BIT(16)
+#define HCA_SHA_CR_INIT		BIT(2)
+#define HCA_SHA_CR_BUSY		BIT(16)
 
 #define HCA_FIFO_IN		0x70
 #define HCA_AES_OUT		0x80
