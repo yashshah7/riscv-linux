@@ -368,6 +368,30 @@ static inline uint32_t sifive_hca_get_sha_rev(struct sifive_hca_dev *hca, uint32
 		return val;
 }
 
+static inline void sifive_hca_sha_set_mode(struct sifive_hca_dev *hca, int mode)
+{
+	_hca_writel(hca, HCA_SHA_CR, mode, 1);
+}
+
+static inline void sifive_hca_sha_set_init(struct sifive_hca_dev *hca)
+{
+	_hca_writel(hca, HCA_SHA_CR, HCA_SHA_CR_INIT, 1);
+}
+
+static inline uint8_t sifive_hca_sha_is_busy(struct sifive_hca_dev *hca)
+{
+	return (readl(hca->regs + HCA_SHA_CR) & HCA_SHA_CR_BUSY);
+}
+
+static inline int sifive_hca_poll_sha_timeout(struct sifive_hca_dev *hca,
+					      u64 timeout_us)
+{
+	u32 status;
+
+	return readl_poll_timeout(hca->regs + HCA_SHA_CR, status,
+				  !(status & HCA_AES_CR_BUSY), 10, timeout_us);
+}
+
 static inline int sifive_hca_aes_set_key(struct sifive_hca_dev *hca, int len, u32 *key)
 {
 	int i, offset = 0x1c;
