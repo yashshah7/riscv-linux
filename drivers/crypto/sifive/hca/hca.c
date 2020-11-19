@@ -64,6 +64,10 @@ static void sifive_hca_dequeue_req(void)
 
 	ctx = crypto_tfm_ctx(req->tfm);
 	ctx->ops->crypt(req);
+
+	local_bh_disable();
+	req->complete(req, 0);
+	local_bh_enable();
 }
 
 int sifive_hca_queue_req(struct crypto_async_request *req)
@@ -87,6 +91,9 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 {
 	struct sifive_hca_dev *hca = dev_id;
 
+	if (sifive_hca_crypto_int_status(hca))
+		complete(&hca->aes_completion);
+
 	if (sifive_hca_dma_int_status(hca))
 		sifive_hca_dma_int_handle(hca);
 
@@ -94,7 +101,6 @@ static irqreturn_t sifive_hca_irq_handler(int irq, void *dev_id)
 		case HCA_CR_IFIFOTGT_AES:
 			/* AES handler */
 			if (sifive_hca_crypto_int_status(hca)) {
-				complete(&hca->aes_completion);
 				sifive_hca_crypto_int_ack(hca);
 			}
 			break;
@@ -127,9 +133,9 @@ static int sifive_hca_init(const struct device *dev, struct sifive_hca_dev *hca)
 		}
 	}
 
-	sifive_hca_crypto_int_disable(hca);
+	sifive_hca_crypto_int_enable(hca);
 	sifive_hca_ofifo_int_disable(hca);
-	sifive_hca_dma_int_disable(hca);
+	sifive_hca_dma_int_enable(hca);
 	init_completion(&hca->aes_completion);
 
 	return 0;
@@ -140,9 +146,9 @@ static int sifive_hca_add_algs(struct sifive_hca_dev *hca)
 {
 	int ret;
 
-	//ret = sifive_aes_algs_register(hca);
-	//if (ret)
-	//	goto err_aes_algs;
+	ret = sifive_aes_algs_register(hca);
+	if (ret)
+		goto err_aes_algs;
 
 	ret = sifive_ahash_algs_register(hca);
 	if (ret)
@@ -152,15 +158,15 @@ static int sifive_hca_add_algs(struct sifive_hca_dev *hca)
 
 err_ahash_algs:
 	sifive_ahash_algs_unregister(hca);
-//err_aes_algs:
-//	sifive_aes_algs_unregister(hca);
+err_aes_algs:
+	sifive_aes_algs_unregister(hca);
 
 	return ret;
 }
 
 static void sifive_hca_remove_algs(struct sifive_hca_dev *hca)
 {
-	//sifive_aes_algs_unregister(hca);
+	sifive_aes_algs_unregister(hca);
 	sifive_ahash_algs_unregister(hca);
 }
 

@@ -4,6 +4,7 @@
 #define _ASM_SIFIVE_HCA_H
 
 #include <crypto/hash.h>
+#include <crypto/aes.h>
 #include <crypto/internal/hash.h>
 #include <crypto/internal/skcipher.h>
 #include <linux/bitfield.h>
@@ -129,6 +130,12 @@
 #define HCA_TRNG_REV_MAJORREV	GENMASK(11, 8)
 #define HCA_TRNG_REV_TYPE	GENMASK(15, 12)
 
+#define	HCA_AES_INITV_SIZE	AES_BLOCK_SIZE
+#define HCA_AES_FIFO_SIZE	32
+#define HCA_AES_DIR_ENC		0
+#define	HCA_AES_DIR_DEC		1
+#define HCA_AES_TIMEOUT		3000000 /* usecs */
+
 struct sifive_hca_algs {
 	struct skcipher_alg **cipher_algs;
 	int ncipher_algs;
@@ -160,12 +167,12 @@ struct sifive_hca_ctx {
 /* HCA controls  */
 static inline void _hca_writel(struct sifive_hca_dev *hca, uint32_t offset, uint32_t data, int set)
 {
-	spin_lock(&hca->lock);
+	spin_lock_irq(&hca->lock);
 	if (set)
 		writel(readl(hca->regs + offset) | data, hca->regs + offset);
 	else
 		writel(readl(hca->regs + offset) & ~data, hca->regs + offset);
-	spin_unlock(&hca->lock);
+	spin_unlock_irq(&hca->lock);
 }
 
 static inline uint8_t sifive_hca_get_fifo_target(struct sifive_hca_dev *hca)
@@ -402,7 +409,7 @@ static inline int sifive_hca_aes_set_key(struct sifive_hca_dev *hca, int len, u3
 	spin_lock(&hca->lock);
 	for (i = 0; i < (len / 4); i++)
 	{
-		writel(cpu_to_le32(key[i]), hca->regs + HCA_AES_KEY + offset);
+		writel(key[i], hca->regs + HCA_AES_KEY + offset);
 		offset = offset - 4;
 	}
 	spin_unlock(&hca->lock);
@@ -420,7 +427,7 @@ static inline int sifive_hca_aes_set_initv(struct sifive_hca_dev *hca, int len, 
 	spin_lock(&hca->lock);
 	for (i = 0; i < (len / 4); i++)
 	{
-		writel(cpu_to_le32(val[i]), hca->regs + HCA_AES_INITV + offset);
+		writel(val[i], hca->regs + HCA_AES_INITV + offset);
 		offset = offset - 4;
 	}
 	spin_unlock(&hca->lock);
@@ -432,6 +439,7 @@ static inline void sifive_hca_aes_fifo_push(struct sifive_hca_dev *hca, const ui
 {
 	const uint8_t *end = src + len;
 
+	spin_lock_irq(&hca->lock);
 	while (src < end)
 	{
 		if ( !(((uintptr_t)src) & (sizeof(uint64_t)-1u)) &&
@@ -462,6 +470,7 @@ static inline void sifive_hca_aes_fifo_push(struct sifive_hca_dev *hca, const ui
 			continue;
 		}
 	}
+	spin_unlock_irq(&hca->lock);
 }
 
 static inline void sifive_hca_aes_fifo_pop(struct sifive_hca_dev *hca, uint8_t *dst, size_t len)
@@ -502,6 +511,7 @@ static inline void sifive_hca_aes_fifo_pop(struct sifive_hca_dev *hca, uint8_t *
 
 static inline void sifive_hca_aes_set_mode(struct sifive_hca_dev *hca, u8 mode)
 {
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_MODE, 0);
 	_hca_writel(hca, HCA_AES_CR, FIELD_PREP(HCA_AES_CR_MODE, mode), 1);
 }
 
@@ -515,6 +525,7 @@ static inline void sifive_hca_aes_set_keysize(struct sifive_hca_dev *hca, u8 siz
 	else if (size == 32)
 		len = FIELD_PREP(HCA_AES_CR_KEYSZ, HCA_AES_CR_KEYSZ_256);
 
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_KEYSZ, 0);
 	_hca_writel(hca, HCA_AES_CR, len, 1);
 }
 
@@ -542,6 +553,14 @@ static inline int sifive_hca_poll_aes_timeout(struct sifive_hca_dev *hca,
 				  !(status & HCA_AES_CR_BUSY), 10, timeout_us);
 }
 
+static inline int sifive_hca_poll_dma_timeout(struct sifive_hca_dev *hca,
+					      u64 timeout_us)
+{
+	u32 status;
+
+	return readl_poll_timeout(hca->regs + HCA_DMA_CR, status,
+				  !(status & HCA_DMA_CR_BUSY), 10, timeout_us);
+}
 /*
  * Helper function that indicates whether a crypto request needs to be
  * cleaned up or not after being enqueued using sifive_hca_queue_req().
@@ -576,11 +595,15 @@ extern struct ahash_alg sifive_hca_sha512_alg;
 
 int sifive_hca_queue_req(struct crypto_async_request *req);
 int sifive_aes_algs_register(struct sifive_hca_dev *hca);
-//void sifive_aes_algs_unregister(struct sifive_hca_dev *hca);
+void sifive_aes_algs_unregister(struct sifive_hca_dev *hca);
 
 int sifive_ahash_algs_register(struct sifive_hca_dev *hca);
 void sifive_ahash_algs_unregister(struct sifive_hca_dev *hca);
 
+bool sifive_hca_dma_crypt_check(struct scatterlist *sg_src,
+				struct scatterlist *sg_dst,
+				struct scatterlist *sg_aad,
+				u32 assoclen);
 int sifive_hca_dma_init(struct sifive_hca_dev *hca);
 int sifive_hca_dma_free(struct sifive_hca_dev *hca);
 int sifive_hca_dma_int_handle(struct sifive_hca_dev *hca);

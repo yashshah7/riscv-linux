@@ -10,6 +10,52 @@
 #define DMA_ALIGNMENT	32u	/* FIFO size 32 bytes */
 #define DMA_BLOCK_SIZE	16u	/* DMA granularity is 128-bits block */
 
+bool sifive_hca_dma_crypt_check(struct scatterlist *sg_src,
+				struct scatterlist *sg_dst,
+				struct scatterlist *sg_aad,
+				u32 assoclen)
+{
+	dma_addr_t src, dst;
+	u32 s_len, d_len, total = 0;
+
+	while (sg_aad != NULL && total < assoclen)
+	{
+		src = sg_dma_address(sg_aad);
+		s_len = sg_dma_len(sg_aad);
+
+		if (((uintptr_t)src) & ((DMA_ALIGNMENT) - 1u))
+			return false;
+		if (((uintptr_t)s_len) & ((DMA_BLOCK_SIZE) - 1u))
+			return -EINVAL;
+
+		total += s_len;
+		sg_aad = sg_next(sg_aad);
+	}
+
+	while (sg_src != NULL && sg_dst != NULL)
+	{
+		src = sg_dma_address(sg_src);
+		dst = sg_dma_address(sg_dst);
+		s_len = sg_dma_len(sg_src);
+		d_len = sg_dma_len(sg_dst);
+
+		if (s_len != d_len)
+			return false;
+		if (((uintptr_t)src) & ((DMA_ALIGNMENT) - 1u))
+			return false;
+		if (((uintptr_t)dst) & ((DMA_ALIGNMENT) - 1u))
+			return false;
+		if (((uintptr_t)s_len) & ((DMA_BLOCK_SIZE) - 1u))
+			return -EINVAL;
+
+		sg_src = sg_next(sg_src);
+		sg_dst = sg_next(sg_dst);
+	}
+
+	return true;
+}
+
+
 int sifive_hca_dma_int_handle(struct sifive_hca_dev *hca)
 {
 	complete(&hca->dma_completion);
@@ -29,22 +75,6 @@ int sifive_hca_dma_transfer(struct sifive_hca_dev *hca, uint32_t src,
 			    uint32_t dest, uint32_t len)
 {
 	struct device *dev = hca->dev;
-
-	/* FIXME: May be we dont need these priliminary checks since it is
-	 * indicated below by reading the regs after starting the dma operation
-	 */
-	if (((uintptr_t)src) & ((DMA_ALIGNMENT) - 1u)) {
-		dev_err(dev, "Source is not aligned on a DMA boundary\n");
-		return -EINVAL;
-	}
-	if (((uintptr_t)dest) & ((DMA_ALIGNMENT) - 1u)) {
-		dev_err(dev, "Destination is not aligned on a DMA boundary\n");
-		return -EINVAL;
-	}
-	if (((uintptr_t)len) & ((DMA_BLOCK_SIZE) - 1u)) {
-		dev_err(dev, "Length is not aligned on a DMA block size\n");
-		return -EINVAL;
-	}
 
 	if (sifive_hca_dma_is_busy(hca)) {
 		dev_err(dev, "DMA HW is busy\n");
