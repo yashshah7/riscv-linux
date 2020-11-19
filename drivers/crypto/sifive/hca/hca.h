@@ -5,8 +5,10 @@
 
 #include <crypto/hash.h>
 #include <crypto/aes.h>
+#include <crypto/aead.h>
 #include <crypto/internal/hash.h>
 #include <crypto/internal/skcipher.h>
+#include <crypto/internal/aead.h>
 #include <linux/bitfield.h>
 #include <linux/iopoll.h>
 
@@ -57,7 +59,7 @@
 #define HCA_AES_CR_CCMT_12	0x5
 #define HCA_AES_CR_CCMT_14	0x6
 #define HCA_AES_CR_CCMT_16	0x7
-#define HCA_AES_CR_CCMQ		BIT(12)
+#define HCA_AES_CR_CCMQ		GENMASK(14, 12)
 #define HCA_AES_CR_CCMQ_INVALID	0x0
 #define HCA_AES_CR_CCMQ_2	0x1
 #define HCA_AES_CR_CCMQ_3	0x2
@@ -135,12 +137,16 @@
 #define HCA_AES_DIR_ENC		0
 #define	HCA_AES_DIR_DEC		1
 #define HCA_AES_TIMEOUT		3000000 /* usecs */
+#define HCA_AES_DTYPE_AAD	0
+#define HCA_AES_DTYPE_PLD	1
 
 struct sifive_hca_algs {
 	struct skcipher_alg **cipher_algs;
 	int ncipher_algs;
 	struct ahash_alg **ahash_algs;
 	int nahash_algs;
+	struct aead_alg **aead_algs;
+	int naead_algs;
 	bool has_dma;
 };
 
@@ -509,6 +515,16 @@ static inline void sifive_hca_aes_fifo_pop(struct sifive_hca_dev *hca, uint8_t *
 	}
 }
 
+static inline void sifive_hca_aes_get_auth(struct sifive_hca_dev *hca,
+					   uint32_t *buf)
+{
+	int i;
+
+	for (i = 0; i < AES_BLOCK_SIZE; i++)
+		buf[sizeof(uint32_t) - 1 - i] =
+			readl(hca->regs + HCA_AES_AUTH + (i * 4));
+}
+
 static inline void sifive_hca_aes_set_mode(struct sifive_hca_dev *hca, u8 mode)
 {
 	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_MODE, 0);
@@ -542,6 +558,50 @@ static inline void sifive_hca_aes_set_init(struct sifive_hca_dev *hca)
 static inline int sifive_hca_aes_is_busy(struct sifive_hca_dev *hca)
 {
 	return (readl(hca->regs + HCA_AES_CR) & HCA_AES_CR_BUSY);
+}
+
+static inline void sifive_hca_aes_set_alen(struct sifive_hca_dev *hca, uint32_t data)
+{
+	spin_lock(&hca->lock);
+	writel(data, hca->regs + HCA_AES_ALEN);
+	spin_unlock(&hca->lock);
+}
+
+static inline void sifive_hca_aes_set_pldlen(struct sifive_hca_dev *hca, uint32_t data)
+{
+	spin_lock(&hca->lock);
+	writel(data, hca->regs + HCA_AES_PLDLEN);
+	spin_unlock(&hca->lock);
+}
+
+static inline void sifive_hca_aes_set_dtype(struct sifive_hca_dev *hca, int type)
+{
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_DTYPE, type);
+}
+
+static inline void sifive_hca_aes_set_ccmt(struct sifive_hca_dev *hca, int val)
+{
+	uint32_t data;
+
+	val = (val - 2) / 2;
+	data = FIELD_PREP(HCA_AES_CR_CCMT, val);
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_CCMT, 0);
+	_hca_writel(hca, HCA_AES_CR, data, 1);
+}
+
+static inline void sifive_hca_aes_set_ccmq(struct sifive_hca_dev *hca, int pdlen)
+{
+	uint32_t q, data;
+
+	while (pdlen)
+	{
+		pdlen = pdlen >> 8;
+		q++;
+	}
+
+	data = FIELD_PREP(HCA_AES_CR_CCMQ, q-1);
+	_hca_writel(hca, HCA_AES_CR, HCA_AES_CR_CCMQ, 0);
+	_hca_writel(hca, HCA_AES_CR, data, 1);
 }
 
 static inline int sifive_hca_poll_aes_timeout(struct sifive_hca_dev *hca,
@@ -596,7 +656,8 @@ extern struct ahash_alg sifive_hca_sha512_alg;
 int sifive_hca_queue_req(struct crypto_async_request *req);
 int sifive_aes_algs_register(struct sifive_hca_dev *hca);
 void sifive_aes_algs_unregister(struct sifive_hca_dev *hca);
-
+int sifive_aead_algs_register(struct sifive_hca_dev *hca);
+void sifive_aead_algs_unregister(struct sifive_hca_dev *hca);
 int sifive_ahash_algs_register(struct sifive_hca_dev *hca);
 void sifive_ahash_algs_unregister(struct sifive_hca_dev *hca);
 

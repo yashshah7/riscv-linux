@@ -38,11 +38,18 @@ static struct ahash_alg *general_hca_ahash_algs[] = {
 	&sifive_hca_sha512_alg,
 };
 
+static struct aead_alg *general_hca_aead_algs[] = {
+//	&sifive_hca_gcm_aes_alg,
+//	&sifive_hca_ccm_aes_alg,
+};
+
 static const struct sifive_hca_algs general_hca_algs = {
 	.cipher_algs = general_hca_cipher_algs,
 	.ncipher_algs = ARRAY_SIZE(general_hca_cipher_algs),
 	.ahash_algs = general_hca_ahash_algs,
 	.nahash_algs = ARRAY_SIZE(general_hca_ahash_algs),
+	.aead_algs = general_hca_aead_algs,
+	.naead_algs = ARRAY_SIZE(general_hca_aead_algs),
 	.has_dma = true,
 };
 
@@ -150,6 +157,10 @@ static int sifive_hca_add_algs(struct sifive_hca_dev *hca)
 	if (ret)
 		goto err_aes_algs;
 
+	ret = sifive_aead_algs_register(hca);
+	if (ret)
+	goto err_aead_algs;
+
 	ret = sifive_ahash_algs_register(hca);
 	if (ret)
 		goto err_ahash_algs;
@@ -158,6 +169,8 @@ static int sifive_hca_add_algs(struct sifive_hca_dev *hca)
 
 err_ahash_algs:
 	sifive_ahash_algs_unregister(hca);
+err_aead_algs:
+	sifive_aead_algs_unregister(hca);
 err_aes_algs:
 	sifive_aes_algs_unregister(hca);
 
@@ -167,6 +180,7 @@ err_aes_algs:
 static void sifive_hca_remove_algs(struct sifive_hca_dev *hca)
 {
 	sifive_aes_algs_unregister(hca);
+	sifive_aead_algs_unregister(hca);
 	sifive_ahash_algs_unregister(hca);
 }
 
