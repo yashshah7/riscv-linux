@@ -441,7 +441,7 @@ static inline int sifive_hca_aes_set_initv(struct sifive_hca_dev *hca, int len, 
 	return 0;
 }
 
-static inline void sifive_hca_aes_fifo_push(struct sifive_hca_dev *hca, const uint8_t *src, size_t len)
+static inline void sifive_hca_fifo_push(struct sifive_hca_dev *hca, const uint8_t *src, size_t len)
 {
 	const uint8_t *end = src + len;
 
@@ -479,7 +479,7 @@ static inline void sifive_hca_aes_fifo_push(struct sifive_hca_dev *hca, const ui
 	spin_unlock_irq(&hca->lock);
 }
 
-static inline void sifive_hca_aes_fifo_pop(struct sifive_hca_dev *hca, uint8_t *dst, size_t len)
+static inline void sifive_hca_fifo_pop(struct sifive_hca_dev *hca, uint8_t *dst, size_t len)
 {
 	const uint8_t *end = dst + len;
 

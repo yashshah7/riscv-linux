@@ -67,7 +67,7 @@ static void sifive_hca_skcipher_std_crypt(struct skcipher_request *skreq)
 			dev_err(hca_dev->dev, "IFIFO is full\n");
 			break;
 		} else {
-			sifive_hca_aes_fifo_push(hca_dev, buf, len);
+			sifive_hca_fifo_push(hca_dev, buf, len);
 		}
 
 		if (sifive_hca_crypto_is_int_enable(hca_dev))
@@ -79,7 +79,7 @@ static void sifive_hca_skcipher_std_crypt(struct skcipher_request *skreq)
 			dev_err(hca_dev->dev, "OFIFO is empty\n");
 			break;
 		} else {
-			sifive_hca_aes_fifo_pop(hca_dev, buf, len);
+			sifive_hca_fifo_pop(hca_dev, buf, len);
 		}
 
 		len = sg_pcopy_from_buffer(skreq->dst, tmpl->dst_nents, buf,

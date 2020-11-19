@@ -93,7 +93,7 @@ static void sifive_hca_aead_std_crypt(struct crypto_async_request *req)
 			dev_err(hca_dev->dev, "IFIFO is full\n");
 			break;
 		} else {
-			sifive_hca_aes_fifo_push(hca_dev, buf, len);
+			sifive_hca_fifo_push(hca_dev, buf, len);
 		}
 
 		offset += len;
@@ -115,7 +115,7 @@ static void sifive_hca_aead_std_crypt(struct crypto_async_request *req)
 			dev_err(hca_dev->dev, "IFIFO is full\n");
 			break;
 		} else {
-			sifive_hca_aes_fifo_push(hca_dev, buf, len);
+			sifive_hca_fifo_push(hca_dev, buf, len);
 		}
 
 		while (!(sifvie_hca_ififo_is_empty(hca_dev)));
@@ -124,7 +124,7 @@ static void sifive_hca_aead_std_crypt(struct crypto_async_request *req)
 			dev_err(hca_dev->dev, "OFIFO is empty\n");
 			break;
 		} else {
-			sifive_hca_aes_fifo_pop(hca_dev, buf, len);
+			sifive_hca_fifo_pop(hca_dev, buf, len);
 		}
 
 		len = sg_pcopy_from_buffer(tmpl->dst_sg, tmpl->dst_nents, buf,
