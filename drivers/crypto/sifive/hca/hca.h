@@ -533,7 +533,7 @@ static inline void sifive_hca_aes_set_mode(struct sifive_hca_dev *hca, u8 mode)
 
 static inline void sifive_hca_aes_set_keysize(struct sifive_hca_dev *hca, u8 size)
 {
-	u8 len;
+	u8 len = 0;
 	if (size == 16)
 		len = FIELD_PREP(HCA_AES_CR_KEYSZ, HCA_AES_CR_KEYSZ_128);
 	else if (size == 24)
@@ -591,7 +591,7 @@ static inline void sifive_hca_aes_set_ccmt(struct sifive_hca_dev *hca, int val)
 
 static inline void sifive_hca_aes_set_ccmq(struct sifive_hca_dev *hca, int pdlen)
 {
-	uint32_t q, data;
+	uint32_t q = 1, data;
 
 	while (pdlen)
 	{
